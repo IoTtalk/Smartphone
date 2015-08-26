@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="5dp" >
+    
+    <TextView
+		android:id="@+id/tv_d_name"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		style="@style/information_text" />
+    
+    <LinearLayout
+	    android:layout_width="match_parent"
+	    android:layout_height="wrap_content"
+	    android:orientation="horizontal">
+		<TextView
+			android:id="@+id/tv_ec_host_address"
+			android:layout_width="0sp"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			style="@style/information_text"/>
+		<TextView
+			android:id="@+id/tv_ec_host_status"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:textStyle="bold"
+			android:paddingRight="3dp"
+			style="@style/information_text"/>
+    </LinearLayout>
+    
+    <ToggleButton
+        android:id="@+id/btn_gsensor"
+		style="@style/thin_small_toggle_button"
+		android:textOn="G-sensor working"
+		android:textOff="G-sensor idle"/>
+    
+    <ToggleButton
+        android:id="@+id/btn_mic"
+		style="@style/thin_small_toggle_button"
+		android:textOn="Mic working"
+		android:textOff="Mic idle"/>
+    
+    <ToggleButton
+        android:id="@+id/btn_speaker"
+		style="@style/thin_small_toggle_button"
+		android:textOn="Speaker working"
+		android:textOff="Speaker idle"/>
+    
+    <Button
+        android:id="@+id/btn_detach"
+        android:text="Detach"
+		style="@style/thin_small_button"/>
+    
+</LinearLayout>
