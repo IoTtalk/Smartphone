@@ -20,7 +20,6 @@ import android.os.Message;
 import android.util.Log;
 
 public class GSensorService extends Service implements SensorEventListener {
-    
     static final int SENSOR_TYPE = Sensor.TYPE_ACCELEROMETER;
     private SensorManager mSensorManager;
     private Sensor mSensor;
@@ -30,6 +29,12 @@ public class GSensorService extends Service implements SensorEventListener {
     static private boolean working = false;
     HandlerThread handler_thread;
     Handler data_handler;
+    
+    // accumulated value
+    float[] history_x;
+    float[] history_y;
+    float[] history_z;
+    int history_count;
     
     private final IBinder mBinder = new MyBinder();
     public class MyBinder extends Binder {
@@ -43,7 +48,7 @@ public class GSensorService extends Service implements SensorEventListener {
         working = false;
         data_handler = null;
         handler_thread = null;
-        notify_message("constructor");
+        logging("constructor");
     }
     
     static boolean is_running () {
@@ -55,24 +60,24 @@ public class GSensorService extends Service implements SensorEventListener {
         running = true;
         working = false;
         timestamp = 0;
-        notify_message("onCreate");
+        logging("onCreate");
         
     }
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        notify_message("onStartCommand");
+        logging("onStartCommand");
         if ( !working ) {
 
-            notify_message("getting phone sensor service");
+            logging("getting phone sensor service");
             mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
             mSensor = mSensorManager.getDefaultSensor(SENSOR_TYPE);
             if ( mSensor != null ) {
-                mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_NORMAL);
-                notify_message("g-sensor available");
+                mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_GAME);
+                logging("g-sensor available");
                 
             } else {
-                notify_message("g-sensor not available");
+                logging("g-sensor not available");
                 return Service.START_NOT_STICKY;
                 
             }
@@ -80,7 +85,7 @@ public class GSensorService extends Service implements SensorEventListener {
             new DataThread().start();
             
         } else {
-            notify_message("already initialized");
+            logging("already initialized");
             
         }
         return Service.START_NOT_STICKY;
@@ -95,25 +100,35 @@ public class GSensorService extends Service implements SensorEventListener {
         if ( !working ) {
             return;
         }
-        // This timestep's delta rotation to be multiplied by the current rotation
-        // after computing it from the gyro sample data.
-        //final float dT = (event.timestamp - timestamp) * NS2S;
-        // Axis of the rotation sample, not normalized yet.
-        float axisX = event.values[0];
-        float axisY = event.values[1];
-        float axisZ = event.values[2];
 
-        // Calculate the angular speed of the sample
-        //float omegaMagnitude = (float)Math.sqrt(axisX*axisX + axisY*axisY + axisZ*axisZ);
+        float data_x = event.values[0];
+        float data_y = event.values[1];
+        float data_z = event.values[2];
+
+        int r = history_count % history_x.length;
+        history_x[r] = data_x;
+        history_y[r] = data_y;
+        history_z[r] = data_z;
         
+        history_count += 1;
         long now = System.currentTimeMillis();
         if (now - timestamp > 150) {
-            push_data(axisX, axisY, axisZ);
-            
+        	logging(history_count +"");
+        	float acc_x = 0;
+        	float acc_y = 0;
+        	float acc_z = 0;
+        	for (int i = 0; i < history_count && i < history_x.length; i++) {
+        		acc_x += history_x[i];
+        		acc_y += history_y[i];
+        		acc_z += history_z[i];
+        	}
+        	acc_x = acc_x / history_count;
+        	acc_y = acc_y / history_count;
+        	acc_z = acc_z / history_count;
+            push_data(acc_x, acc_y, acc_z);
+        	history_count = 0;
             timestamp = now;
-            
         }
-        
     }
     
     private void push_data (float x, float y, float z) {
@@ -131,6 +146,10 @@ public class GSensorService extends Service implements SensorEventListener {
     class DataThread extends Thread {
         @Override
         public void run () {
+        	history_x = new float[100];
+        	history_y = new float[100];
+        	history_z = new float[100];
+        	history_count = 0;
         	
         	working = true;
             
@@ -152,7 +171,7 @@ public class GSensorService extends Service implements SensorEventListener {
                         data.put(y);
                         data.put(z);
                         EasyConnect.push_data("G-sensor", data);
-                        notify_message("push_data(" + x + "," + y + "," + z + ")");
+                        logging("push_data(" + x + "," + y + "," + z + ")");
                         
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -180,12 +199,8 @@ public class GSensorService extends Service implements SensorEventListener {
         mSensorManager.unregisterListener(this, mSensor);
         
     }
-    
-    boolean logging = true;
 
-    private void notify_message (String message) {
-        
-        if ( !logging ) return;
+    private void logging (String message) {
         
         Log.i(C.log_tag, "[GSensorService] " + message);
     }
