@@ -64,6 +64,8 @@ public class MainActivity extends TabActivity {
         }
         new RegisterThread().start();
         
+        EasyConnect.start(this);
+        
     }
     
     public void end () {
@@ -176,10 +178,11 @@ public class MainActivity extends TabActivity {
     }
     
     private String get_wifi_mac_addr () {
-        WifiManager wifiMan = (WifiManager) this.getSystemService(
-            Context.WIFI_SERVICE);
-        WifiInfo wifiInf = wifiMan.getConnectionInfo();
-        return wifiInf.getMacAddress();
+//        WifiManager wifiMan = (WifiManager) this.getSystemService(
+//            Context.WIFI_SERVICE);
+//        WifiInfo wifiInf = wifiMan.getConnectionInfo();
+//        return wifiInf.getMacAddress();
+    	return EasyConnect.get_mac_addr();
     }
     
     public void send_message_to_features_page (String tag, String data) {

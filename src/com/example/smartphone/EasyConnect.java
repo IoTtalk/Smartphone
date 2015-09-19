@@ -6,7 +6,21 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-class EasyConnect {
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.os.Binder;
+import android.os.IBinder;
+import android.support.v4.app.NotificationCompat;
+import android.util.Log;
+
+public class EasyConnect extends Service {
+	static EasyConnect self = null;
+	
     static public  int      EC_PORT           = 9999;
     static         String   EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
     static public  int      EC_BROADCAST_PORT = 17000;
@@ -17,6 +31,47 @@ class EasyConnect {
     static private String   _d_name;
     static private String   _u_name;
     static private String   _phone_mac_addr;
+    
+    private final IBinder mBinder = new MyBinder();
+    public class MyBinder extends Binder {
+    	EasyConnect getService() {
+            return EasyConnect.this;
+        }
+    }
+    
+    @Override
+    public IBinder onBind(Intent arg0) {
+        return mBinder;
+    }
+    
+    static public void start (Context ctx) {
+    	// start this service
+        Intent intent = new Intent (ctx, EasyConnect.class);
+        ctx.getApplicationContext().startService(intent);
+    }
+    
+    public EasyConnect () {
+    	self = this;
+    }
+    
+    static public String get_mac_addr () {
+    	if (self != null) {
+    		WifiManager wifiMan = (WifiManager) self.getSystemService(
+                Context.WIFI_SERVICE);
+            WifiInfo wifiInf = wifiMan.getConnectionInfo();
+            return wifiInf.getMacAddress();
+    	}
+    	return "";
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return Service.START_STICKY;
+    }
+
+    private void logging (String message) {
+        Log.i("EasyConnect", "[EasyConnect] " + message);
+    }
 
     static public boolean attach (
         String mac_addr,
