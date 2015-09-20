@@ -27,8 +27,6 @@ public class MainActivity extends TabActivity {
 	final int NOTIFICATION_ID = 1;
 	
 	static boolean register_retry_permission = true;
-	static boolean detect_local_ec_permission = true;
-	static DetectLocalECThread detact_local_ec_thread = null;
 	static MainActivity self;
 	
     @Override
@@ -52,26 +50,15 @@ public class MainActivity extends TabActivity {
         tabHost.addTab(tabspec);
         
         register_retry_permission = true;
-        detect_local_ec_permission = true;
         
         // show ec status on monitor page
         show_ec_status(false);
-
-        // detect local EC
-        if (detact_local_ec_thread == null) {
-	        detact_local_ec_thread = new DetectLocalECThread();
-	        detact_local_ec_thread.start();
-        }
         new RegisterThread().start();
         
-        EasyConnect.start(this);
-        
+        EasyConnect.start(this, C.dm_name);
     }
     
     public void end () {
-		detact_local_ec_thread.stop_working();
-		detact_local_ec_thread = null;
-        detect_local_ec_permission = false;
         new DetachThread().start();
         NotificationManager notification_manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         notification_manager.cancelAll();
@@ -83,49 +70,6 @@ public class MainActivity extends TabActivity {
         super.onDestroy();
 		MonitorDataThread.work_permission = false;
 		register_retry_permission = false;
-    }
-    
-    private class DetectLocalECThread extends Thread {
-    	DatagramSocket socket;
-    	public void stop_working () {
-    		socket.close();
-    	}
-    	
-    	public void run () {
-			logging("Detection Thread starts");
-    		try {
-    			String current_ec_host = EasyConnect.EC_HOST;
-				socket = new DatagramSocket(null);
-				socket.setReuseAddress(true);
-				socket.bind(new InetSocketAddress("0.0.0.0", EasyConnect.EC_BROADCAST_PORT));
-				byte[] lmessage = new byte[20];
-				DatagramPacket packet = new DatagramPacket(lmessage, lmessage.length);
-				while (detect_local_ec_permission) {
-					logging("wait for UDP packet");
-                    socket.receive(packet);
-                    String input_data = new String( lmessage, 0, packet.getLength() );
-                    if (input_data.equals("easyconnect")) {
-                    	InetAddress ec_raw_addr = packet.getAddress();
-                    	String ec_addr = ec_raw_addr.getHostAddress();
-                    	logging("Get easyconnect UDP Packet from "+ ec_addr);
-                    	String new_ec_host = ec_addr +":"+ EasyConnect.EC_PORT;
-                    	if (!current_ec_host.equals(new_ec_host)) {
-	                    	logging("Reattach to "+ new_ec_host);
-	                    	EasyConnect.reattach_to(new_ec_host);
-	                    	current_ec_host = new_ec_host;
-	                    	show_ec_status(true);
-                    	}
-                    }
-                }
-				socket.close();
-			} catch (SocketException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} finally {
-				logging("Detection Thread stops");
-			}
-    	}
     }
     
     static private class DetachThread extends Thread {

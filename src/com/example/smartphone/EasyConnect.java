@@ -1,5 +1,11 @@
 package com.example.smartphone;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.util.Arrays;
 
 import org.json.JSONArray;
@@ -19,7 +25,11 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
-	static EasyConnect self = null;
+	static private EasyConnect self = null;
+	static private DetectLocalECThread detect_local_ec_thread = null;
+	static private String log_tag = "EasyConnect";
+	
+	static private final int NOTIFICATION_ID = 1;
 	
     static public  int      EC_PORT           = 9999;
     static         String   EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
@@ -32,54 +42,147 @@ public class EasyConnect extends Service {
     static private String   _u_name;
     static private String   _phone_mac_addr;
     
-    private final IBinder mBinder = new MyBinder();
-    public class MyBinder extends Binder {
-    	EasyConnect getService() {
-            return EasyConnect.this;
-        }
+    @Override
+    public IBinder onBind(Intent arg0) {
+        return null;
     }
     
     @Override
-    public IBinder onBind(Intent arg0) {
-        return mBinder;
+    public int onStartCommand(Intent intent, int flags, int startId) {
+    	return START_STICKY;
     }
     
-    static public void start (Context ctx) {
+    public EasyConnect () {
+    	self = this;
+    	detect_local_ec_thread = new DetectLocalECThread();
+    	detect_local_ec_thread.start();
+    }
+    
+    // *********** //
+    // * Threads * //
+    // *********** //
+    
+    private class DetectLocalECThread extends Thread {
+    	DatagramSocket socket;
+    	boolean working_permission;
+    	public void stop_working () {
+			logging("Request Detection Thread stop_working");
+    		working_permission = false;
+    		socket.close();
+    	}
+    	
+    	public void run () {
+    		working_permission = true;
+			logging("Detection Thread starts");
+    		try {
+    			String current_ec_host = EasyConnect.EC_HOST;
+				socket = new DatagramSocket(null);
+				socket.setReuseAddress(true);
+				socket.bind(new InetSocketAddress("0.0.0.0", EasyConnect.EC_BROADCAST_PORT));
+				byte[] lmessage = new byte[20];
+				DatagramPacket packet = new DatagramPacket(lmessage, lmessage.length);
+				while (working_permission) {
+					logging("wait for UDP packet");
+                    socket.receive(packet);
+                    String input_data = new String( lmessage, 0, packet.getLength() );
+                    if (input_data.equals("easyconnect")) {
+                    	InetAddress ec_raw_addr = packet.getAddress();
+                    	String ec_addr = ec_raw_addr.getHostAddress();
+                    	logging("Get easyconnect UDP Packet from "+ ec_addr);
+                    	String new_ec_host = ec_addr +":"+ EasyConnect.EC_PORT;
+                    	if (!current_ec_host.equals(new_ec_host)) {
+	                    	EasyConnect.reattach_to(new_ec_host);
+	                    	current_ec_host = new_ec_host;
+	                    	show_ec_status(true);
+                    	}
+                    }
+                }
+				socket.close();
+			} catch (SocketException e) {
+				logging("SocketException");
+				e.printStackTrace();
+			} catch (IOException e) {
+				logging("IOException");
+				e.printStackTrace();
+			} finally {
+				logging("Detection Thread stops");
+			}
+    	}
+    }
+    
+    // *************************** //
+    // * Internal Used Functions * //
+    // *************************** //
+    
+    static private void show_ec_status (boolean status) {
+    	String text = status ? EasyConnect.EC_HOST : "connecting";
+        NotificationManager notification_manager = (NotificationManager) self.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationCompat.Builder notification_builder =
+    		new NotificationCompat.Builder(self)
+	    	.setSmallIcon(R.drawable.ic_launcher)
+	    	.setContentTitle(C.dm_name)
+	    	.setContentText(text)
+	    	.setOngoing(true);
+        
+        PendingIntent pending_intent = PendingIntent.getActivity(
+    		self,
+    		0,
+    		new Intent(self, MainActivity.class),
+    	    PendingIntent.FLAG_UPDATE_CURRENT
+		);
+        
+        notification_builder.setContentIntent(pending_intent);
+        notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
+    }
+
+    static private String _get_clean_addr (String m) {
+        return m.replace(":", "");
+    }
+
+    static private String _get_device_id (String m) {
+        return "defema"+ _get_clean_addr(m);
+    }
+
+    static private void logging (String message) {
+        Log.i(log_tag, "[EasyConnect] " + message);
+    }
+    
+    // ************** //
+    // * Public API * //
+    // ************** //
+    
+    static public void start (Context ctx, String tag) {
+    	log_tag = tag;
     	// start this service
         Intent intent = new Intent (ctx, EasyConnect.class);
         ctx.getApplicationContext().startService(intent);
     }
     
-    public EasyConnect () {
-    	self = this;
-    }
-    
     static public String get_mac_addr () {
-    	if (self != null) {
-    		WifiManager wifiMan = (WifiManager) self.getSystemService(
-                Context.WIFI_SERVICE);
-            WifiInfo wifiInf = wifiMan.getConnectionInfo();
-            return wifiInf.getMacAddress();
+    	if (self == null) {
+    		return "E2:20:2E:22:02";	// Error
     	}
-    	return "";
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        return Service.START_STICKY;
-    }
-
-    private void logging (String message) {
-        Log.i("EasyConnect", "[EasyConnect] " + message);
+    	
+		WifiManager wifiMan = (WifiManager) self.getSystemService(Context.WIFI_SERVICE);
+		if (wifiMan == null) {
+    		return "E2:20:2E:22:02";
+		}
+		
+        WifiInfo wifiInf = wifiMan.getConnectionInfo();
+        if (wifiInf == null) {
+    		return "E2:20:2E:22:02";
+        }
+        
+        return wifiInf.getMacAddress();
     }
 
     static public boolean attach (
-        String mac_addr,
-        String dm_name,
-        String[] df_list,
-        String d_name,
-        String u_name,
-        String phone_mac_addr) {
+	        String mac_addr,
+	        String dm_name,
+	        String[] df_list,
+	        String d_name,
+	        String u_name,
+	        String phone_mac_addr) {
     	
     	if (mac_addr == null) {
     		return false;
@@ -121,8 +224,9 @@ public class EasyConnect extends Service {
     }
     
     static public boolean reattach_to (String new_host) {
-    	detach();
+    	_detach();
     	EC_HOST = new_host;
+    	logging("Reattach to "+ new_host);
     	return attach(_mac_addr, _dm_name, _df_list, _d_name, _u_name, _phone_mac_addr);
     }
 
@@ -185,23 +289,24 @@ public class EasyConnect extends Service {
     }
 
     static public boolean detach () {
-        String url = "http://"+ EC_HOST +"/delete/"+ _d_id;
-        return HttpRequest.get(url).status_code == 200;
-
-    }
-
-    static private String _get_clean_addr (String m) {
-        return m.replace(":", "");
-    }
-
-    static private String _get_device_id (String m) {
-        return "defema"+ _get_clean_addr(m);
+    	detect_local_ec_thread.stop_working();
+        self.getApplicationContext().stopService(new Intent(self, EasyConnect.class));
+        return _detach();
     }
     
     static public void reset_ec_host () {
     	EC_PORT = 9999;
     	EC_HOST = "openmtc.darkgerm.com:"+ EC_PORT;
     	EC_BROADCAST_PORT = 17000;
+    }
+    
+    // ********************* //
+    // * Internal HTTP API * //
+    // ********************* //
+
+    static private boolean _detach () {
+        String url = "http://"+ EC_HOST +"/delete/"+ _d_id;
+        return HttpRequest.get(url).status_code == 200;
     }
 
 }

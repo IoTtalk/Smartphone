@@ -39,6 +39,7 @@ class MonitorDataThread extends Thread {
 		
 		newest_raw_data = new JSONObject();
 		
+		work_permission = false;
 		while (work_permission) {
 			try {
 				Object tmp = EasyConnect.pull_data("Display").getJSONArray("data").get(0);
