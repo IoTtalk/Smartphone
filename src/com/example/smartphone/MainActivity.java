@@ -86,20 +86,20 @@ public class MainActivity extends TabActivity {
     		logging("RegisterThread starts");
             
             // show smartphone name on features page
-    		String smartphone_d_name = "Android"+ get_wifi_mac_addr().replace(":", "");
-            send_message_to_features_page("D_NAME", smartphone_d_name);
+    		String smartphone_d_name = "Android"+ EasyConnect.get_mac_addr().replace(":", "");
+//            send_message_to_features_page("D_NAME", smartphone_d_name);
     		
     		boolean attach_success = false;
     		
             while ( register_retry_permission && !attach_success ) {
 	    		//attach_success = DeFeMa.attach(
             	attach_success = EasyConnect.attach(
-	        		get_wifi_mac_addr(),
+        			EasyConnect.get_mac_addr(),
 					C.dm_name,
 					C.df_list,
 					smartphone_d_name,
 					C.u_name,
-					get_wifi_mac_addr()
+					EasyConnect.get_mac_addr()
 				);
 
     			if ( !attach_success ) {
@@ -121,37 +121,29 @@ public class MainActivity extends TabActivity {
     	}
     }
     
-    private String get_wifi_mac_addr () {
-//        WifiManager wifiMan = (WifiManager) this.getSystemService(
-//            Context.WIFI_SERVICE);
-//        WifiInfo wifiInf = wifiMan.getConnectionInfo();
-//        return wifiInf.getMacAddress();
-    	return EasyConnect.get_mac_addr();
-    }
+//    public void send_message_to_features_page (String tag, String data) {
+//    	FeatureActivity activity = (FeatureActivity)getLocalActivityManager().getActivity("tab-features");
+//    	if (activity != null) {
+//	    	Handler handler = activity.ec_status_handler;
+//	        Message msgObj = handler.obtainMessage();
+//	        Bundle b = new Bundle();
+//	        b.putInt("tag", 314);
+//	        b.putString("message", data);
+//	        msgObj.setData(b);
+//	        handler.sendMessage(msgObj);
+//    	}
+//    }
     
-    public void send_message_to_features_page (String tag, String data) {
-    	FeatureActivity activity = (FeatureActivity)getLocalActivityManager().getActivity("tab-features");
-    	if (activity != null) {
-	    	Handler handler = activity.ec_status_handler;
-	        Message msgObj = handler.obtainMessage();
-	        Bundle b = new Bundle();
-	        b.putString("tag", tag);
-	        b.putString("data", data);
-	        msgObj.setData(b);
-	        handler.sendMessage(msgObj);
-    	}
-    }
-    
-    public void show_ec_status_on_features_page (boolean status) {
-        send_message_to_features_page("EC_STATUS", status ? "~" : "!");
-    }
+//    public void show_ec_status_on_features_page (boolean status) {
+////        send_message_to_features_page("EC_STATUS", status ? "~" : "!");
+//    }
     
     static public void logging (String message) {
         Log.i(C.log_tag, "[MainActivity] " + message);
     }
     
     public void show_ec_status (boolean status) {
-    	show_ec_status_on_features_page(status);
+//    	show_ec_status_on_features_page(status);
     	String text = status ? EasyConnect.EC_HOST : "connecting";
         NotificationManager notification_manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationCompat.Builder notification_builder =

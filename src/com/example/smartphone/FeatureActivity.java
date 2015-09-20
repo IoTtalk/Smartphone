@@ -97,30 +97,6 @@ public class FeatureActivity extends Activity {
             
         }
         
-//        final ToggleButton btn_audio_decide = (ToggleButton) findViewById(R.id.btn_audio_decide);
-//        btn_audio_decide.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-//            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-//                if (isChecked) {
-//                    logging("Request AudioDecideService start");
-//                    Intent intent = new Intent (FeatureActivity.this, AudioDecideService.class);
-//                    getApplicationContext().startService(intent);
-//                    
-//                } else {
-//                    logging("Request AudioDecideService stop");
-//                    getApplicationContext().stopService(new Intent(FeatureActivity.this, AudioDecideService.class));
-//                    
-//                }
-//            }
-//        });
-//        
-//        if ( !AudioDecideService.is_running() ) {
-//        	btn_audio_decide.setChecked(false);
-//            
-//        } else {
-//        	btn_audio_decide.setChecked(true);
-//            
-//        }
-        
         Button btn_detach = (Button)findViewById(R.id.btn_detach);
         btn_detach.setOnClickListener(new View.OnClickListener () {
             @Override
@@ -135,6 +111,26 @@ public class FeatureActivity extends Activity {
                 MainActivity.self.end();
             }
         });
+        
+        ec_status_handler = new Handler () {
+    	    public void handleMessage (Message msg) {
+    	        int tag = msg.getData().getInt("tag");
+    	        if (tag == EasyConnect.ATTACH_SUCCESS) {
+    	        	String host = msg.getData().getString("message");
+    				((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
+    				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
+    				tv_ec_host_status.setText("~");
+					tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
+    				
+    	        } else if (tag == 314) {
+    	        	String d_name = msg.getData().getString("message");
+    				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_d_name);
+    				tv_ec_host_status.setText(d_name);
+    				
+    	        }
+    	    }
+    	};
+    	EasyConnect.register(ec_status_handler);
 
     }
     
@@ -150,29 +146,7 @@ public class FeatureActivity extends Activity {
         
     }
 	
-	public Handler ec_status_handler = new Handler () {
-	    public void handleMessage (Message msg) {
-	        String tag = msg.getData().getString("tag");
-	        if (tag.equals("EC_STATUS")) {
-	        	String connected = msg.getData().getString("data");
-				TextView tv_ec_host_address = (TextView)findViewById(R.id.tv_ec_host_address);
-				tv_ec_host_address.setText(EasyConnect.EC_HOST);
-				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
-				tv_ec_host_status.setText(connected);
-				if (connected.equals("~")) {
-					tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
-				} else {
-					tv_ec_host_status.setTextColor(Color.RED);
-				}
-				
-	        } else if (tag.equals("D_NAME")) {
-	        	String d_name = msg.getData().getString("data");
-				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_d_name);
-				tv_ec_host_status.setText(d_name);
-				
-	        }
-	    }
-	};
+	public Handler ec_status_handler;
     
     public void logging (String message) {
         Log.i(C.log_tag, "[FeatureActivity] " + message);

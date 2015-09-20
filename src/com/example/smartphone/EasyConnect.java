@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.util.Arrays;
+import java.util.HashSet;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -19,8 +20,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Binder;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
@@ -29,8 +32,10 @@ public class EasyConnect extends Service {
 	static private DetectLocalECThread detect_local_ec_thread = null;
 	static private String log_tag = "EasyConnect";
 	
-	static private final int NOTIFICATION_ID = 1;
+	static HashSet<Handler> subscribers = null;
+	static public final int ATTACH_SUCCESS = 0;
 	
+	static private final int NOTIFICATION_ID = 1;
     static public  int      EC_PORT           = 9999;
     static         String   EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
     static public  int      EC_BROADCAST_PORT = 17000;
@@ -94,6 +99,7 @@ public class EasyConnect extends Service {
 	                    	EasyConnect.reattach_to(new_ec_host);
 	                    	current_ec_host = new_ec_host;
 	                    	show_ec_status(true);
+	                    	notify_all_subscribers(ATTACH_SUCCESS, new_ec_host);
                     	}
                     }
                 }
@@ -142,9 +148,34 @@ public class EasyConnect extends Service {
     static private String _get_device_id (String m) {
         return "defema"+ _get_clean_addr(m);
     }
+    
+    static private boolean reattach_to (String new_host) {
+    	_detach();
+    	EC_HOST = new_host;
+    	logging("Reattach to "+ new_host);
+    	return attach(_mac_addr, _dm_name, _df_list, _d_name, _u_name, _phone_mac_addr);
+    }
 
     static private void logging (String message) {
         Log.i(log_tag, "[EasyConnect] " + message);
+    }
+    
+    static private void notify_all_subscribers (int tag, String message) {
+    	if (subscribers == null) {
+    		return;
+    	}
+    	for (Handler handler: subscribers) {
+    		send_message_to(handler, tag, message);
+    	}
+    }
+    
+    static private void send_message_to (Handler handler, int tag, String message) {
+        Message msgObj = handler.obtainMessage();
+        Bundle b = new Bundle();
+        b.putInt("tag", tag);
+        b.putString("message", message);
+        msgObj.setData(b);
+        handler.sendMessage(msgObj);
     }
     
     // ************** //
@@ -174,6 +205,17 @@ public class EasyConnect extends Service {
         }
         
         return wifiInf.getMacAddress();
+    }
+    
+    static public void register (Handler handler) {
+    	if (subscribers == null) {
+    		subscribers = new HashSet<Handler>();
+    	}
+    	subscribers.add(handler);
+    }
+    
+    static public void deregister (Handler handler) {
+    	subscribers.remove(handler);
     }
 
     static public boolean attach (
@@ -221,13 +263,6 @@ public class EasyConnect extends Service {
         
         return false;
 
-    }
-    
-    static public boolean reattach_to (String new_host) {
-    	_detach();
-    	EC_HOST = new_host;
-    	logging("Reattach to "+ new_host);
-    	return attach(_mac_addr, _dm_name, _df_list, _d_name, _u_name, _phone_mac_addr);
     }
 
     static public boolean push_data (String feature, int data) {
@@ -291,6 +326,7 @@ public class EasyConnect extends Service {
     static public boolean detach () {
     	detect_local_ec_thread.stop_working();
         self.getApplicationContext().stopService(new Intent(self, EasyConnect.class));
+        self = null;
         return _detach();
     }
     
