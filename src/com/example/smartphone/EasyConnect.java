@@ -30,8 +30,6 @@ import android.util.Log;
 public class EasyConnect extends Service {
 	static private EasyConnect self = null;
 	static private Context creater = null;
-	static private DetectLocalECThread detect_local_ec_thread = null;
-	static private RegisterThread register_thread = null;
 	static private String log_tag = "EasyConnect";
 	static private String mac_addr_cache = null;
 	
@@ -53,9 +51,8 @@ public class EasyConnect extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
     	self = this;
-    	show_ec_status_on_notification(false);
-    	detect_local_ec_thread = new DetectLocalECThread();
-    	detect_local_ec_thread.start();
+    	show_ec_status_on_notification(ec_status);
+    	DetectLocalECThread.work();
     	return START_STICKY;
     }
     
@@ -64,16 +61,33 @@ public class EasyConnect extends Service {
     // *********** //
     
     static private class DetectLocalECThread extends Thread {
+    	static DetectLocalECThread self = null;
     	DatagramSocket socket;
-    	boolean working_permission;
-    	public void stop_working () {
-			logging("Request Detection Thread stop_working");
+    	static boolean working_permission;
+    	
+    	static public void work () {
+			logging("DetectLocalECThread.work()");
+    		if (self != null) {
+    			logging("already working");
+    			return;
+    		}
+    		working_permission = true;
+    		self = new DetectLocalECThread();
+    		self.start();
+    	}
+    	
+    	static public void stop_working () {
+			logging("DetectLocalECThread.stop_working()");
+			if (self == null) {
+    			logging("already stopped");
+				return;
+			}
     		working_permission = false;
-    		socket.close();
+    		self.socket.close();
+    		self = null;
     	}
     	
     	public void run () {
-    		working_permission = true;
 			logging("Detection Thread starts");
     		try {
 				socket = new DatagramSocket(null);
@@ -94,7 +108,6 @@ public class EasyConnect extends Service {
                     	if (!EC_HOST.equals(new_ec_host)) {
                     		boolean reattach_successed = EasyConnect.reattach_to(new_ec_host);
 	                    	show_ec_status_on_notification(reattach_successed);
-	                    	notify_all_subscribers(ATTACH_SUCCESS, new_ec_host);
                     	}
                     }
                 }
@@ -106,26 +119,46 @@ public class EasyConnect extends Service {
 				logging("IOException");
 				e.printStackTrace();
 			} finally {
+				DetectLocalECThread.stop_working();
 				logging("Detection Thread stops");
 			}
     	}
     }
     
     static private class RegisterThread extends Thread {
-    	boolean working_permission;
-    	public void stop_working () {
-			logging("Request Register Thread stop_working");
+    	static RegisterThread self;
+    	static boolean working_permission;
+    	
+    	static public void work () {
+    		logging("RegisterThread.work()");
+    		if (ec_status) {
+    			logging("already registered");
+    	    	show_ec_status_on_notification(ec_status);
+    			return;
+    		}
+    		
+    		if (self != null) {
+    			logging("already working");
+    	    	show_ec_status_on_notification(ec_status);
+    			return;
+    		}
+    		working_permission = true;
+    		self = new RegisterThread();
+    		self.start();
+    	}
+    	
+    	static public void stop_working () {
+			logging("RegisterThread.stop_working()");
     		working_permission = false;
+    		self = null;
     	}
     	
     	@Override
         public void run () {
-    		working_permission = true;
     		logging("RegisterThread starts");
     		boolean attach_success = false;
     		
             while ( working_permission && !attach_success ) {
-	    		//attach_success = DeFeMa.attach(
             	attach_success = EasyConnect.attach_api(profile);
 
     			if ( !attach_success ) {
@@ -138,13 +171,12 @@ public class EasyConnect extends Service {
 		    		
     			} else {
 		    		logging("Attach Successed");
-            		new MonitorDataThread().start();
-            		show_ec_status_on_notification();
+            		show_ec_status_on_notification(true);
     			}
     			
             }
             logging("RegisterThread stops");
-            register_thread = null;
+            RegisterThread.stop_working();
     	}
     }
     
@@ -154,22 +186,30 @@ public class EasyConnect extends Service {
     
     static private void show_ec_status_on_notification (boolean new_ec_status) {
     	ec_status = new_ec_status;
+    	if (ec_status) {
+        	notify_all_subscribers(ATTACH_SUCCESS, EC_HOST);
+    	}
     	show_ec_status_on_notification();
     }
+    
     static private void show_ec_status_on_notification () {
+    	Context ctx = get_reliable_context();
+    	if (ctx == null) {
+    		return;
+    	}
     	String text = ec_status ? EasyConnect.EC_HOST : "Connecting";
-        NotificationManager notification_manager = (NotificationManager) self.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notification_manager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationCompat.Builder notification_builder =
-    		new NotificationCompat.Builder(self)
+    		new NotificationCompat.Builder(ctx)
 	    	.setSmallIcon(R.drawable.ic_launcher)
 	    	.setContentTitle(C.dm_name)
 	    	.setContentText(text)
 	    	.setOngoing(true);
         
         PendingIntent pending_intent = PendingIntent.getActivity(
-    		self,
+        	ctx,
     		0,
-    		new Intent(self, MainActivity.class),
+    		new Intent(ctx, MainActivity.class),
     	    PendingIntent.FLAG_UPDATE_CURRENT
 		);
         
@@ -206,6 +246,14 @@ public class EasyConnect extends Service {
         handler.sendMessage(msgObj);
     }
     
+    static private Context get_reliable_context () {
+    	if (self == null) {
+    		logging("EasyConnect Service is null, use creater instead");
+    		return creater;
+    	}
+    	return self;
+    }
+    
     // ************** //
     // * Public API * //
     // ************** //
@@ -220,17 +268,13 @@ public class EasyConnect extends Service {
     
     static public String get_mac_addr () {
     	String error_mac_addr = "E2202E2202";
-    	Context ctx = self;
+    	Context ctx = get_reliable_context();
     	
     	if (mac_addr_cache != null) {
     		logging("We have mac address cache: "+ mac_addr_cache);
     		return mac_addr_cache;
     	}
     	
-    	if (ctx == null) {
-    		logging("EasyConnect Service is null, use creater instead");
-    		ctx = creater;
-    	}
     	if (ctx == null) {
     		return error_mac_addr;
     	}
@@ -268,11 +312,7 @@ public class EasyConnect extends Service {
     
     static public void attach (JSONObject profile) {
     	EasyConnect.profile = profile;
-    	if (register_thread != null) {
-    		return;
-    	}
-    	register_thread = new RegisterThread();
-    	register_thread.start();
+    	RegisterThread.work();
     }
 
     static public boolean push_data (String feature, int data) {
@@ -345,8 +385,8 @@ public class EasyConnect extends Service {
     }
 
     static public boolean detach () {
-    	detect_local_ec_thread.stop_working();
-    	detect_local_ec_thread = null;
+		DetectLocalECThread.stop_working();
+        RegisterThread.stop_working();
         self.getApplicationContext().stopService(new Intent(self, EasyConnect.class));
         self = null;
         return detach_api();

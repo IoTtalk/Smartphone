@@ -81,19 +81,6 @@ public class MainActivity extends TabActivity {
     	}
     }
     
-//    public void send_message_to_features_page (String tag, String data) {
-//    	FeatureActivity activity = (FeatureActivity)getLocalActivityManager().getActivity("tab-features");
-//    	if (activity != null) {
-//	    	Handler handler = activity.ec_status_handler;
-//	        Message msgObj = handler.obtainMessage();
-//	        Bundle b = new Bundle();
-//	        b.putInt("tag", 314);
-//	        b.putString("message", data);
-//	        msgObj.setData(b);
-//	        handler.sendMessage(msgObj);
-//    	}
-//    }
-    
     static public void logging (String message) {
         Log.i(C.log_tag, "[MainActivity] " + message);
     }
