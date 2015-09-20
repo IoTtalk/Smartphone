@@ -29,9 +29,11 @@ import android.util.Log;
 
 public class EasyConnect extends Service {
 	static private EasyConnect self = null;
+	static private Context creater = null;
 	static private DetectLocalECThread detect_local_ec_thread = null;
 	static private RegisterThread register_thread = null;
 	static private String log_tag = "EasyConnect";
+	static private String mac_addr_cache = null;
 	
 	static HashSet<Handler> subscribers = null;
 	static public final int ATTACH_SUCCESS = 0;
@@ -41,7 +43,7 @@ public class EasyConnect extends Service {
     static         String   EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
     static public  int      EC_BROADCAST_PORT = 17000;
     static private JSONObject profile;
-    static private boolean ec_connected = false;
+    static private boolean ec_status = false;
     
     @Override
     public IBinder onBind(Intent arg0) {
@@ -150,12 +152,12 @@ public class EasyConnect extends Service {
     // * Internal Used Functions * //
     // *************************** //
     
-    static private void show_ec_status_on_notification (boolean new_status) {
-    	ec_connected = new_status;
+    static private void show_ec_status_on_notification (boolean new_ec_status) {
+    	ec_status = new_ec_status;
     	show_ec_status_on_notification();
     }
     static private void show_ec_status_on_notification () {
-    	String text = ec_connected ? EasyConnect.EC_HOST : "connecting";
+    	String text = ec_status ? EasyConnect.EC_HOST : "Connecting";
         NotificationManager notification_manager = (NotificationManager) self.getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationCompat.Builder notification_builder =
     		new NotificationCompat.Builder(self)
@@ -209,6 +211,7 @@ public class EasyConnect extends Service {
     // ************** //
     
     static public void start (Context ctx, String tag) {
+    	creater = ctx;
     	log_tag = tag;
     	// start this service
         Intent intent = new Intent (ctx, EasyConnect.class);
@@ -217,21 +220,35 @@ public class EasyConnect extends Service {
     
     static public String get_mac_addr () {
     	String error_mac_addr = "E2202E2202";
-    	if (self == null) {
+    	Context ctx = self;
+    	
+    	if (mac_addr_cache != null) {
+    		logging("We have mac address cache: "+ mac_addr_cache);
+    		return mac_addr_cache;
+    	}
+    	
+    	if (ctx == null) {
+    		logging("EasyConnect Service is null, use creater instead");
+    		ctx = creater;
+    	}
+    	if (ctx == null) {
     		return error_mac_addr;
     	}
     	
-		WifiManager wifiMan = (WifiManager) self.getSystemService(Context.WIFI_SERVICE);
+		WifiManager wifiMan = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
 		if (wifiMan == null) {
+    		logging("Cannot get WiFiManager system service");
     		return error_mac_addr;
 		}
 		
         WifiInfo wifiInf = wifiMan.getConnectionInfo();
         if (wifiInf == null) {
+        	logging("Cannot get connection info");
     		return error_mac_addr;
         }
         
-        return wifiInf.getMacAddress().replace(":", "");
+        mac_addr_cache = wifiInf.getMacAddress().replace(":", ""); 
+        return mac_addr_cache;
     }
     
     static public String get_d_id () {
