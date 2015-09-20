@@ -30,6 +30,7 @@ import android.util.Log;
 public class EasyConnect extends Service {
 	static private EasyConnect self = null;
 	static private DetectLocalECThread detect_local_ec_thread = null;
+	static private RegisterThread register_thread = null;
 	static private String log_tag = "EasyConnect";
 	
 	static HashSet<Handler> subscribers = null;
@@ -39,13 +40,8 @@ public class EasyConnect extends Service {
     static public  int      EC_PORT           = 9999;
     static         String   EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
     static public  int      EC_BROADCAST_PORT = 17000;
-    static private String   _mac_addr;
-    static private String   _d_id;
-    static private String   _dm_name;
-    static private String[] _df_list;
-    static private String   _d_name;
-    static private String   _u_name;
-    static private String   _phone_mac_addr;
+    static private JSONObject profile;
+    static private boolean ec_connected = false;
     
     @Override
     public IBinder onBind(Intent arg0) {
@@ -54,20 +50,18 @@ public class EasyConnect extends Service {
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-    	return START_STICKY;
-    }
-    
-    public EasyConnect () {
     	self = this;
+    	show_ec_status_on_notification(false);
     	detect_local_ec_thread = new DetectLocalECThread();
     	detect_local_ec_thread.start();
+    	return START_STICKY;
     }
     
     // *********** //
     // * Threads * //
     // *********** //
     
-    private class DetectLocalECThread extends Thread {
+    static private class DetectLocalECThread extends Thread {
     	DatagramSocket socket;
     	boolean working_permission;
     	public void stop_working () {
@@ -80,25 +74,24 @@ public class EasyConnect extends Service {
     		working_permission = true;
 			logging("Detection Thread starts");
     		try {
-    			String current_ec_host = EasyConnect.EC_HOST;
 				socket = new DatagramSocket(null);
 				socket.setReuseAddress(true);
 				socket.bind(new InetSocketAddress("0.0.0.0", EasyConnect.EC_BROADCAST_PORT));
 				byte[] lmessage = new byte[20];
 				DatagramPacket packet = new DatagramPacket(lmessage, lmessage.length);
 				while (working_permission) {
-					logging("wait for UDP packet");
+					logging("Wait for UDP packet");
                     socket.receive(packet);
                     String input_data = new String( lmessage, 0, packet.getLength() );
                     if (input_data.equals("easyconnect")) {
+                    	// It's easyconnect packet
                     	InetAddress ec_raw_addr = packet.getAddress();
                     	String ec_addr = ec_raw_addr.getHostAddress();
                     	logging("Get easyconnect UDP Packet from "+ ec_addr);
                     	String new_ec_host = ec_addr +":"+ EasyConnect.EC_PORT;
-                    	if (!current_ec_host.equals(new_ec_host)) {
-	                    	EasyConnect.reattach_to(new_ec_host);
-	                    	current_ec_host = new_ec_host;
-	                    	show_ec_status(true);
+                    	if (!EC_HOST.equals(new_ec_host)) {
+                    		boolean reattach_successed = EasyConnect.reattach_to(new_ec_host);
+	                    	show_ec_status_on_notification(reattach_successed);
 	                    	notify_all_subscribers(ATTACH_SUCCESS, new_ec_host);
                     	}
                     }
@@ -116,12 +109,53 @@ public class EasyConnect extends Service {
     	}
     }
     
+    static private class RegisterThread extends Thread {
+    	boolean working_permission;
+    	public void stop_working () {
+			logging("Request Register Thread stop_working");
+    		working_permission = false;
+    	}
+    	
+    	@Override
+        public void run () {
+    		working_permission = true;
+    		logging("RegisterThread starts");
+    		boolean attach_success = false;
+    		
+            while ( working_permission && !attach_success ) {
+	    		//attach_success = DeFeMa.attach(
+            	attach_success = EasyConnect.attach_api(profile);
+
+    			if ( !attach_success ) {
+		    		logging("Attach failed, wait for 2000ms and try again");
+    				try {
+						Thread.sleep(2000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+		    		
+    			} else {
+		    		logging("Attach Successed");
+            		new MonitorDataThread().start();
+            		show_ec_status_on_notification();
+    			}
+    			
+            }
+            logging("RegisterThread stops");
+            register_thread = null;
+    	}
+    }
+    
     // *************************** //
     // * Internal Used Functions * //
     // *************************** //
     
-    static private void show_ec_status (boolean status) {
-    	String text = status ? EasyConnect.EC_HOST : "connecting";
+    static private void show_ec_status_on_notification (boolean new_status) {
+    	ec_connected = new_status;
+    	show_ec_status_on_notification();
+    }
+    static private void show_ec_status_on_notification () {
+    	String text = ec_connected ? EasyConnect.EC_HOST : "connecting";
         NotificationManager notification_manager = (NotificationManager) self.getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationCompat.Builder notification_builder =
     		new NotificationCompat.Builder(self)
@@ -140,20 +174,12 @@ public class EasyConnect extends Service {
         notification_builder.setContentIntent(pending_intent);
         notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
     }
-
-    static private String _get_clean_addr (String m) {
-        return m.replace(":", "");
-    }
-
-    static private String _get_device_id (String m) {
-        return "defema"+ _get_clean_addr(m);
-    }
     
     static private boolean reattach_to (String new_host) {
-    	_detach();
+    	detach_api();
     	EC_HOST = new_host;
     	logging("Reattach to "+ new_host);
-    	return attach(_mac_addr, _dm_name, _df_list, _d_name, _u_name, _phone_mac_addr);
+    	return attach_api(profile);
     }
 
     static private void logging (String message) {
@@ -190,21 +216,26 @@ public class EasyConnect extends Service {
     }
     
     static public String get_mac_addr () {
+    	String error_mac_addr = "E2202E2202";
     	if (self == null) {
-    		return "E2:20:2E:22:02";	// Error
+    		return error_mac_addr;
     	}
     	
 		WifiManager wifiMan = (WifiManager) self.getSystemService(Context.WIFI_SERVICE);
 		if (wifiMan == null) {
-    		return "E2:20:2E:22:02";
+    		return error_mac_addr;
 		}
 		
         WifiInfo wifiInf = wifiMan.getConnectionInfo();
         if (wifiInf == null) {
-    		return "E2:20:2E:22:02";
+    		return error_mac_addr;
         }
         
-        return wifiInf.getMacAddress();
+        return wifiInf.getMacAddress().replace(":", "");
+    }
+    
+    static public String get_d_id () {
+        return "defema"+ get_mac_addr();
     }
     
     static public void register (Handler handler) {
@@ -217,52 +248,14 @@ public class EasyConnect extends Service {
     static public void deregister (Handler handler) {
     	subscribers.remove(handler);
     }
-
-    static public boolean attach (
-	        String mac_addr,
-	        String dm_name,
-	        String[] df_list,
-	        String d_name,
-	        String u_name,
-	        String phone_mac_addr) {
-    	
-    	if (mac_addr == null) {
-    		return false;
+    
+    static public void attach (JSONObject profile) {
+    	EasyConnect.profile = profile;
+    	if (register_thread != null) {
+    		return;
     	}
-
-        _mac_addr = _get_clean_addr(mac_addr);
-        _d_id = _get_device_id(mac_addr);
-        _dm_name = dm_name;
-        _df_list = df_list;
-        _d_name = d_name;
-        _u_name = u_name;
-        _phone_mac_addr = _get_clean_addr(phone_mac_addr);
-
-        try {
-            JSONObject profile = new JSONObject();
-            profile.put("dm_name", _dm_name);
-            profile.put("d_name", _d_name);
-
-            JSONArray dfl = new JSONArray();
-            for (String i : _df_list) {
-                dfl.put(i);
-            }
-            profile.put("features", dfl);
-
-            profile.put("monitor", _phone_mac_addr);
-            profile.put("u_name", _u_name);
-
-            String profile_str = profile.toString().replace(" ", "");
-
-            String url = "http://"+ EC_HOST +"/create/"+ _d_id +"?profile="+ profile_str;
-            return HttpRequest.get(url).status_code == 200;
-            
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        
-        return false;
-
+    	register_thread = new RegisterThread();
+    	register_thread.start();
     }
 
     static public boolean push_data (String feature, int data) {
@@ -294,40 +287,52 @@ public class EasyConnect extends Service {
     }
 
     static private boolean _push_data (String feature, String data) {
-        String url = "http://"+ EC_HOST +"/push/"+ _d_id +"/"+ feature +"?data="+ data;
-        return HttpRequest.get(url).status_code == 200;
-
+        String url;
+		try {
+			url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ data;
+	        return HttpRequest.get(url).status_code == 200;
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		return false;
     }
 
     static public JSONObject pull_data (String feature) {
-        String url = "http://"+ EC_HOST +"/pull/"+ _d_id +"/"+ feature;
-        HttpRequest.HttpResponse a = HttpRequest.get(url);
+        String url;
+		try {
+			url = "http://"+ EC_HOST +"/pull/"+ profile.getString("d_id") +"/"+ feature;
+	        HttpRequest.HttpResponse a = HttpRequest.get(url);
 
-        if (a.status_code != 200) {
-            try {
-                JSONObject ret = new JSONObject();
-                ret.put("timestamp", "none");
-                ret.put("data", new JSONArray());
-                return ret;
-                
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-            
-        }
+	        if (a.status_code != 200) {
+	            try {
+	                JSONObject ret = new JSONObject();
+	                ret.put("timestamp", "none");
+	                ret.put("data", new JSONArray());
+	                return ret;
+	                
+	            } catch (JSONException e) {
+	                e.printStackTrace();
+	            }
+	            
+	        }
 
-        try {
-            return new JSONObject(a.body);
-        } catch (JSONException e) {
-            return new JSONObject();
-        }
+	        try {
+	            return new JSONObject(a.body);
+	        } catch (JSONException e) {
+	            return new JSONObject();
+	        }
+		} catch (JSONException e1) {
+			e1.printStackTrace();
+		}
+        return new JSONObject();
     }
 
     static public boolean detach () {
     	detect_local_ec_thread.stop_working();
+    	detect_local_ec_thread = null;
         self.getApplicationContext().stopService(new Intent(self, EasyConnect.class));
         self = null;
-        return _detach();
+        return detach_api();
     }
     
     static public void reset_ec_host () {
@@ -340,9 +345,25 @@ public class EasyConnect extends Service {
     // * Internal HTTP API * //
     // ********************* //
 
-    static private boolean _detach () {
-        String url = "http://"+ EC_HOST +"/delete/"+ _d_id;
-        return HttpRequest.get(url).status_code == 200;
+    static private boolean attach_api (JSONObject profile) {
+        String url;
+		try {
+			url = "http://"+ EC_HOST +"/create/"+ profile.getString("d_id") +"?profile="+ profile.toString().replace(" ", "");
+	        return HttpRequest.get(url).status_code == 200;
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		return false;
     }
 
+    static private boolean detach_api () {
+        String url;
+		try {
+			url = "http://"+ EC_HOST +"/delete/"+ profile.getString("d_id");
+	        return HttpRequest.get(url).status_code == 200;
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		return false;
+    }
 }
