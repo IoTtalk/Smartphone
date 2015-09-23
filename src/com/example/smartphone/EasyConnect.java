@@ -34,8 +34,10 @@ public class EasyConnect extends Service {
 	static private String mac_addr_cache = null;
 	
 	static HashSet<Handler> subscribers = null;
-	static public final int D_NAME_GENEREATED = 0;
-	static public final int ATTACH_SUCCESS = 1;
+	static public enum Tag {
+		D_NAME_GENEREATED,
+		ATTACH_SUCCESS,
+	};
 	
 	static private final int NOTIFICATION_ID = 1;
     static public  int      EC_PORT           = 9999;
@@ -161,7 +163,7 @@ public class EasyConnect extends Service {
     		
         	try {
         		logging("Broadcast d_name:"+ profile.getString("d_name"));
-				notify_all_subscribers(D_NAME_GENEREATED, profile.getString("d_name"));
+				notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
 			} catch (JSONException e1) {
 				e1.printStackTrace();
 			}
@@ -195,7 +197,7 @@ public class EasyConnect extends Service {
     static private void show_ec_status_on_notification (boolean new_ec_status) {
     	ec_status = new_ec_status;
     	if (ec_status) {
-        	notify_all_subscribers(ATTACH_SUCCESS, EC_HOST);
+        	notify_all_subscribers(Tag.ATTACH_SUCCESS, EC_HOST);
     	}
     	show_ec_status_on_notification();
     }
@@ -236,7 +238,7 @@ public class EasyConnect extends Service {
         Log.i(log_tag, "[EasyConnect] " + message);
     }
     
-    static private void notify_all_subscribers (int tag, String message) {
+    static private void notify_all_subscribers (Tag tag, String message) {
     	if (subscribers == null) {
     		logging("Broadcast: No subscribers");
     		return;
@@ -246,12 +248,12 @@ public class EasyConnect extends Service {
     	}
     }
     
-    static private void send_message_to (Handler handler, int tag, String message) {
+    static private void send_message_to (Handler handler, Tag tag, String message) {
         Message msgObj = handler.obtainMessage();
-        Bundle b = new Bundle();
-        b.putInt("tag", tag);
-        b.putString("message", message);
-        msgObj.setData(b);
+        Bundle bundle = new Bundle();
+        bundle.putSerializable("tag", tag);
+        bundle.putString("message", message);
+        msgObj.setData(bundle);
         handler.sendMessage(msgObj);
     }
     

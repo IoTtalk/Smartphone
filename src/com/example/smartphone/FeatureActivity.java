@@ -1,5 +1,7 @@
 package com.example.smartphone;
 
+import com.example.smartphone.EasyConnect.Tag;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -115,20 +117,21 @@ public class FeatureActivity extends Activity {
         
         ec_status_handler = new Handler () {
     	    public void handleMessage (Message msg) {
-    	        int tag = msg.getData().getInt("tag");
-    	        if (tag == EasyConnect.ATTACH_SUCCESS) {
-    	        	String host = msg.getData().getString("message");
-    				((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
-    				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
-    				tv_ec_host_status.setText("~");
-					tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
-    				
-    	        } else if (tag == EasyConnect.D_NAME_GENEREATED) {
-    	        	String d_name = msg.getData().getString("message");
-    	        	logging("Get d_name:"+ d_name);
-    				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
-    				tv_d_name.setText(d_name);
-    				
+    	        switch ( (EasyConnect.Tag)msg.getData().get("tag") ){
+    	        case ATTACH_SUCCESS:
+	    	        	String host = msg.getData().getString("message");
+	    				((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
+	    				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
+	    				tv_ec_host_status.setText("~");
+						tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
+						break;
+	    				
+    	        case D_NAME_GENEREATED:
+	    	        	String d_name = msg.getData().getString("message");
+	    	        	logging("Get d_name:"+ d_name);
+	    				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
+	    				tv_d_name.setText(d_name);
+	    				break;
     	        }
     	    }
     	};
