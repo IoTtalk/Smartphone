@@ -162,7 +162,6 @@ public class EasyConnect extends Service {
     		boolean attach_success = false;
     		
         	try {
-        		logging("Broadcast d_name:"+ profile.getString("d_name"));
 				notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
 			} catch (JSONException e1) {
 				e1.printStackTrace();

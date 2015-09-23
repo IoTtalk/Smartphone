@@ -117,7 +117,7 @@ public class FeatureActivity extends Activity {
         
         ec_status_handler = new Handler () {
     	    public void handleMessage (Message msg) {
-    	        switch ( (EasyConnect.Tag)msg.getData().get("tag") ){
+    	        switch ((EasyConnect.Tag)msg.getData().get("tag")){
     	        case ATTACH_SUCCESS:
 	    	        	String host = msg.getData().getString("message");
 	    				((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
