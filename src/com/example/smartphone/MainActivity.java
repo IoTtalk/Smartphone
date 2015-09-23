@@ -62,25 +62,23 @@ public class MainActivity extends TabActivity {
     }
     
     public void end () {
-        new DetachThread().start();
-        NotificationManager notification_manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notification_manager.cancelAll();
+		EasyConnect.detach();
         finish();
     }
     
     @Override
-    public void onDestroy () {
-        super.onDestroy();
-		MonitorDataThread.work_permission = false;
-    }
-    
-    static private class DetachThread extends Thread {
-    	public void run () {
-    		EasyConnect.detach();
-	        EasyConnect.reset_ec_host();
-            logging("Detached from EasyConnect");
+    public void onPause () {
+    	super.onPause();
+    	if (isFinishing()) {
+    		MonitorDataThread.work_permission = false;
     	}
     }
+    
+//    @Override
+//    public void onDestroy () {
+//        super.onDestroy();
+//		MonitorDataThread.work_permission = false;
+//    }
     
     static public void logging (String message) {
         Log.i(C.log_tag, "[MainActivity] " + message);

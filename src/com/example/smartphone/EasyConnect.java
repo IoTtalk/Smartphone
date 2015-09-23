@@ -37,6 +37,7 @@ public class EasyConnect extends Service {
 	static public enum Tag {
 		D_NAME_GENEREATED,
 		ATTACH_SUCCESS,
+		DETACH_SUCCESS,
 	};
 	
 	static private final int NOTIFICATION_ID = 1;
@@ -186,6 +187,46 @@ public class EasyConnect extends Service {
             }
             logging("RegisterThread stops");
             RegisterThread.stop_working();
+    	}
+    }
+    
+    static private class DetachThread extends Thread {
+    	static DetachThread self;
+    	
+    	static public void work() {
+    		if (!ec_status) {
+    			logging("Already detached");
+    	    	show_ec_status_on_notification(ec_status);
+    			return;
+    		}
+    		
+    		if (self != null) {
+    			logging("already working");
+    	    	show_ec_status_on_notification(ec_status);
+    			return;
+    		}
+    		self = new DetachThread();
+    		self.start();
+    	}
+    	
+    	@Override
+        public void run () {
+    		DetectLocalECThread.stop_working();
+            RegisterThread.stop_working();
+            EasyConnect.self.getApplicationContext().stopService(new Intent(EasyConnect.self, EasyConnect.class));
+            self = null;
+            ec_status = false;
+            boolean detach_result = detach_api();
+    		
+            notify_all_subscribers(Tag.DETACH_SUCCESS, EC_HOST);
+            NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
+            notification_manager.cancelAll();
+        	
+    		logging("Detached from EasyConnect");
+            
+            // reset
+        	EC_PORT = 9999;
+        	EC_HOST = "openmtc.darkgerm.com:"+ EC_PORT;
     	}
     }
     
@@ -394,19 +435,8 @@ public class EasyConnect extends Service {
         return new JSONObject();
     }
 
-    static public boolean detach () {
-		DetectLocalECThread.stop_working();
-        RegisterThread.stop_working();
-        self.getApplicationContext().stopService(new Intent(self, EasyConnect.class));
-        self = null;
-        ec_status = false;
-        return detach_api();
-    }
-    
-    static public void reset_ec_host () {
-    	EC_PORT = 9999;
-    	EC_HOST = "openmtc.darkgerm.com:"+ EC_PORT;
-    	EC_BROADCAST_PORT = 17000;
+    static public void detach () {
+    	DetachThread.work();
     }
     
     // ********************* //

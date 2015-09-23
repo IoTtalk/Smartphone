@@ -119,19 +119,19 @@ public class FeatureActivity extends Activity {
     	    public void handleMessage (Message msg) {
     	        switch ((EasyConnect.Tag)msg.getData().get("tag")){
     	        case ATTACH_SUCCESS:
-	    	        	String host = msg.getData().getString("message");
-	    				((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
-	    				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
-	    				tv_ec_host_status.setText("~");
-						tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
-						break;
+    	        	String host = msg.getData().getString("message");
+    				((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
+    				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
+    				tv_ec_host_status.setText("~");
+					tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
+					break;
 	    				
     	        case D_NAME_GENEREATED:
-	    	        	String d_name = msg.getData().getString("message");
-	    	        	logging("Get d_name:"+ d_name);
-	    				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
-	    				tv_d_name.setText(d_name);
-	    				break;
+    	        	String d_name = msg.getData().getString("message");
+    	        	logging("Get d_name:"+ d_name);
+    				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
+    				tv_d_name.setText(d_name);
+    				break;
     	        }
     	    }
     	};
@@ -145,10 +145,11 @@ public class FeatureActivity extends Activity {
     }
     
     @Override
-    public void onDestroy () {
-        super.onDestroy();
-    	EasyConnect.deregister(ec_status_handler);
-        
+    public void onPause () {
+    	super.onPause();
+    	if (isFinishing()) {
+        	EasyConnect.deregister(ec_status_handler);
+    	}
     }
     
     public void logging (String message) {
