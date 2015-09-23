@@ -43,6 +43,7 @@ public class EasyConnect extends Service {
 	static private final int NOTIFICATION_ID = 1;
     static public  int      EC_PORT           = 9999;
     static         String   EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
+    static         String   DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
     static public  int      EC_BROADCAST_PORT = 17000;
     static private JSONObject profile;
     static private boolean ec_status = false;
@@ -68,6 +69,8 @@ public class EasyConnect extends Service {
     	static DetectLocalECThread self = null;
     	DatagramSocket socket;
     	static boolean working_permission;
+    	String verifying_ec_host = null;
+    	int receive_count = 0;
     	
     	static public void work () {
 			logging("DetectLocalECThread.work()");
@@ -83,12 +86,41 @@ public class EasyConnect extends Service {
     	static public void stop_working () {
 			logging("DetectLocalECThread.stop_working()");
 			if (self == null) {
-    			logging("already stopped");
+    			logging("Already stopped");
 				return;
 			}
     		working_permission = false;
     		self.socket.close();
     		self = null;
+    	}
+    	
+    	private void process_easyconnect_packet (String _) {
+    		logging("Get EasyConnect UDP Packet from "+ _);
+        	String new_ec_host = _ +":"+ EasyConnect.EC_PORT;
+    		
+    		if (verifying_ec_host == null) {
+    			verifying_ec_host = new_ec_host;
+    		}
+    		
+    		if (EC_HOST.equals(DEFAULT_EC_HOST)) {
+    			// we are now on default EC, and we should use local EC first
+    			receive_count = 10;
+    		} else if (verifying_ec_host.equals(new_ec_host)) {
+    			// contiguously receiving EC packet
+        		receive_count += 1;
+    		} else {
+    			receive_count = 0;
+    		}
+    		
+    		// prevent overflow
+    		if (receive_count >= 10) {
+    			receive_count = 10;
+    		}
+    		
+        	if (receive_count >= 5 && !EC_HOST.equals(verifying_ec_host)) {
+        		boolean reattach_successed = EasyConnect.reattach_to(new_ec_host);
+            	show_ec_status_on_notification(reattach_successed);
+        	}
     	}
     	
     	public void run () {
@@ -107,12 +139,7 @@ public class EasyConnect extends Service {
                     	// It's easyconnect packet
                     	InetAddress ec_raw_addr = packet.getAddress();
                     	String ec_addr = ec_raw_addr.getHostAddress();
-                    	logging("Get easyconnect UDP Packet from "+ ec_addr);
-                    	String new_ec_host = ec_addr +":"+ EasyConnect.EC_PORT;
-                    	if (!EC_HOST.equals(new_ec_host)) {
-                    		boolean reattach_successed = EasyConnect.reattach_to(new_ec_host);
-	                    	show_ec_status_on_notification(reattach_successed);
-                    	}
+                    	process_easyconnect_packet(ec_addr);
                     }
                 }
 				socket.close();
