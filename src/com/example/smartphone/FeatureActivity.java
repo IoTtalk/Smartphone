@@ -16,6 +16,7 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 
 public class FeatureActivity extends Activity {
+	static public Handler ec_status_handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,10 +123,11 @@ public class FeatureActivity extends Activity {
     				tv_ec_host_status.setText("~");
 					tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
     				
-    	        } else if (tag == 314) {
+    	        } else if (tag == EasyConnect.D_NAME_GENEREATED) {
     	        	String d_name = msg.getData().getString("message");
-    				TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_d_name);
-    				tv_ec_host_status.setText(d_name);
+    	        	logging("Get d_name:"+ d_name);
+    				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
+    				tv_d_name.setText(d_name);
     				
     	        }
     	    }
@@ -142,11 +144,9 @@ public class FeatureActivity extends Activity {
     @Override
     public void onDestroy () {
         super.onDestroy();
-        // Don't detach here, or all service will be killed
+    	EasyConnect.deregister(ec_status_handler);
         
     }
-	
-	public Handler ec_status_handler;
     
     public void logging (String message) {
         Log.i(C.log_tag, "[FeatureActivity] " + message);

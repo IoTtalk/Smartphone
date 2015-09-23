@@ -34,7 +34,8 @@ public class EasyConnect extends Service {
 	static private String mac_addr_cache = null;
 	
 	static HashSet<Handler> subscribers = null;
-	static public final int ATTACH_SUCCESS = 0;
+	static public final int D_NAME_GENEREATED = 0;
+	static public final int ATTACH_SUCCESS = 1;
 	
 	static private final int NOTIFICATION_ID = 1;
     static public  int      EC_PORT           = 9999;
@@ -158,6 +159,13 @@ public class EasyConnect extends Service {
     		logging("RegisterThread starts");
     		boolean attach_success = false;
     		
+        	try {
+        		logging("Broadcast d_name:"+ profile.getString("d_name"));
+				notify_all_subscribers(D_NAME_GENEREATED, profile.getString("d_name"));
+			} catch (JSONException e1) {
+				e1.printStackTrace();
+			}
+    		
             while ( working_permission && !attach_success ) {
             	attach_success = EasyConnect.attach_api(profile);
 
@@ -230,6 +238,7 @@ public class EasyConnect extends Service {
     
     static private void notify_all_subscribers (int tag, String message) {
     	if (subscribers == null) {
+    		logging("Broadcast: No subscribers");
     		return;
     	}
     	for (Handler handler: subscribers) {
@@ -267,13 +276,13 @@ public class EasyConnect extends Service {
     }
     
     static public String get_mac_addr () {
-    	String error_mac_addr = "E2202E2202";
-    	Context ctx = get_reliable_context();
-    	
     	if (mac_addr_cache != null) {
     		logging("We have mac address cache: "+ mac_addr_cache);
     		return mac_addr_cache;
     	}
+    	
+    	String error_mac_addr = "E2202E2202";
+    	Context ctx = get_reliable_context();
     	
     	if (ctx == null) {
     		return error_mac_addr;
@@ -389,6 +398,7 @@ public class EasyConnect extends Service {
         RegisterThread.stop_working();
         self.getApplicationContext().stopService(new Intent(self, EasyConnect.class));
         self = null;
+        ec_status = false;
         return detach_api();
     }
     
