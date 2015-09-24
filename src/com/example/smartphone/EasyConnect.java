@@ -67,10 +67,11 @@ public class EasyConnect extends Service {
     
     static private class DetectLocalECThread extends Thread {
     	static DetectLocalECThread self = null;
-    	DatagramSocket socket;
+    	
+    	static DatagramSocket socket;
     	static boolean working_permission;
-    	String verifying_ec_host = null;
-    	int receive_count = 0;
+    	static String verifying_ec_host = null;
+    	static int receive_count = 0;
     	
     	static public void work () {
 			logging("DetectLocalECThread.work()");
@@ -90,7 +91,7 @@ public class EasyConnect extends Service {
 				return;
 			}
     		working_permission = false;
-    		self.socket.close();
+    		socket.close();
     		self = null;
     	}
     	
@@ -249,7 +250,7 @@ public class EasyConnect extends Service {
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
             notification_manager.cancelAll();
         	
-    		logging("Detached from EasyConnect");
+    		logging("Detached from EasyConnect, result: "+ detach_result);
             
             // reset
         	EC_PORT = 9999;
