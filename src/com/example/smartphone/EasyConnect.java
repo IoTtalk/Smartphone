@@ -67,6 +67,7 @@ public class EasyConnect extends Service {
     
     static private class DetectLocalECThread extends Thread {
     	static DetectLocalECThread self = null;
+    	private DetectLocalECThread () {}
     	
     	static DatagramSocket socket;
     	static boolean working_permission;
@@ -159,6 +160,8 @@ public class EasyConnect extends Service {
     
     static private class RegisterThread extends Thread {
     	static RegisterThread self;
+    	private RegisterThread () {}
+    	
     	static boolean working_permission;
     	
     	static public void work () {
@@ -220,6 +223,7 @@ public class EasyConnect extends Service {
     
     static private class DetachThread extends Thread {
     	static DetachThread self;
+    	private DetachThread () {}
     	
     	static public void work() {
     		if (!ec_status) {
