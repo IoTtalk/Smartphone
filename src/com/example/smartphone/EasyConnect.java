@@ -557,11 +557,13 @@ public class EasyConnect extends Service {
     }
 
     static private boolean _push_data (String feature, String data) {
-    	if (!upstream_thread_pool.containsKey(feature)) {
-    		UpStreamThread ust = new UpStreamThread(feature);
-    		upstream_thread_pool.put(feature, ust);
-    		ust.start();
-    	}
+        String url;
+		try {
+			url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ data;
+	        return HttpRequest.get(url).status_code == 200;
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 		return false;
     }
 
