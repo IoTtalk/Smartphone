@@ -105,30 +105,42 @@ public class GSensorService extends Service implements SensorEventListener {
         float data_y = event.values[1];
         float data_z = event.values[2];
 
-        int r = history_count % history_x.length;
-        history_x[r] = data_x;
-        history_y[r] = data_y;
-        history_z[r] = data_z;
-        
-        history_count += 1;
-        long now = System.currentTimeMillis();
-        if (now - timestamp > 150) {
-        	logging(history_count +"");
-        	float acc_x = 0;
-        	float acc_y = 0;
-        	float acc_z = 0;
-        	for (int i = 0; i < history_count && i < history_x.length; i++) {
-        		acc_x += history_x[i];
-        		acc_y += history_y[i];
-        		acc_z += history_z[i];
-        	}
-        	acc_x = acc_x / history_count;
-        	acc_y = acc_y / history_count;
-        	acc_z = acc_z / history_count;
-            push_data(acc_x, acc_y, acc_z);
-        	history_count = 0;
-            timestamp = now;
+        JSONArray data = new JSONArray();
+        try {
+            data.put(data_x);
+            data.put(data_y);
+            data.put(data_z);
+            EasyConnect.push_data2("G-sensor", data);
+            logging(String.format("push_data(%.10f, %.10f, %.10f)", data_x, data_y, data_z));
+            
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
+
+//        int r = history_count % history_x.length;
+//        history_x[r] = data_x;
+//        history_y[r] = data_y;
+//        history_z[r] = data_z;
+//        
+//        history_count += 1;
+//        long now = System.currentTimeMillis();
+//        if (now - timestamp > 150) {
+//        	logging(history_count +"");
+//        	float acc_x = 0;
+//        	float acc_y = 0;
+//        	float acc_z = 0;
+//        	for (int i = 0; i < history_count && i < history_x.length; i++) {
+//        		acc_x += history_x[i];
+//        		acc_y += history_y[i];
+//        		acc_z += history_z[i];
+//        	}
+//        	acc_x = acc_x / history_count;
+//        	acc_y = acc_y / history_count;
+//        	acc_z = acc_z / history_count;
+//            push_data(acc_x, acc_y, acc_z);
+//        	history_count = 0;
+//            timestamp = now;
+//        }
     }
     
     private void push_data (float x, float y, float z) {

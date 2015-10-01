@@ -7,7 +7,9 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -48,6 +50,8 @@ public class EasyConnect extends Service {
     static private JSONObject profile;
     static private boolean ec_status = false;
     
+    static HashMap<String, UpStreamThread> upstream_thread_pool;
+    
     @Override
     public IBinder onBind(Intent arg0) {
         return null;
@@ -56,6 +60,7 @@ public class EasyConnect extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
     	self = this;
+    	upstream_thread_pool = new HashMap<String, UpStreamThread>();
     	show_ec_status_on_notification(ec_status);
     	DetectLocalECThread.work();
     	return START_STICKY;
@@ -262,6 +267,110 @@ public class EasyConnect extends Service {
     	}
     }
     
+    static private class UpStreamThread extends Thread {
+    	// UpStreamThread cannot be singleton,
+    	// or it may block other threads
+    	boolean working_permission;
+    	String feature;
+    	LinkedBlockingQueue<JSONArray> queue;
+    	int dimension;
+    	boolean queueable;
+    	long timestamp;
+    	
+    	public UpStreamThread (String feature) {
+    		this.feature = feature;
+    		this.queue = new LinkedBlockingQueue<JSONArray>();
+    		this.dimension = 0;
+    		this.queueable = false;
+    		this.timestamp = 0;
+    	}
+    	
+    	public void stop_working () {
+			working_permission = false;
+    	}
+    	
+    	public void enqueue (JSONArray data) {
+    		if (dimension == 0) {
+    			try {
+    				// check if the data is queueable
+    				// which means every dimension is in "double" type
+					dimension = data.length();
+					queueable = true;
+					for (int i = 0; i < dimension; i++) {
+						if (!(data.get(i) instanceof Double)) {
+							queueable = false;
+						}
+					}
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+    		}
+    		
+    		if (queueable) {
+	    		try {
+					queue.put(data);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+    		} else {
+    			try {
+        			queue.clear();
+					queue.put(data);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				};
+    		}
+    	}
+    	
+    	public void run () {
+    		logging("UpStreamThread("+ feature +") starts");
+    		working_permission = true;
+    		while (working_permission) {
+    			try {
+        			long now = System.currentTimeMillis();
+        			if (now - timestamp < 150) {
+        				Thread.sleep(now - timestamp);
+        			}
+    				timestamp = now;
+    				double[] buffer = new double[dimension];
+    				if (!queueable) {
+    					JSONArray tmp = queue.take();
+    					for (int i = 0; i < tmp.length(); i++) {
+    						buffer[i] = tmp.getDouble(i);
+    					}
+    				} else {
+	    				int buffer_count = 0;
+	    				do {
+	    					JSONArray tmp = queue.take();
+	    					for (int i = 0; i < dimension; i++) {
+	    						buffer[i] += tmp.getDouble(i);
+	    					}
+	    					buffer_count += 1;
+	    				} while (!queue.isEmpty());
+	    				
+	    				if (buffer_count == 0) {
+	    					continue;
+	    				}
+	    				
+	    				for (int i = 0; i < dimension; i++) {
+	    					buffer[i] /= buffer_count;
+	    				}
+    				}
+    				
+    		        String url;
+    				url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ Arrays.toString(buffer).replace(" ", "");
+    				logging("UpStreamThread("+ feature +") push data: "+ Arrays.toString(buffer));
+    		        HttpRequest.get(url);
+    			} catch (JSONException e) {
+    				e.printStackTrace();
+    			} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+    		}
+    		logging("UpStreamThread("+ feature +") stops");
+    	}
+    }
+    
     // *************************** //
     // * Internal Used Functions * //
     // *************************** //
@@ -427,14 +536,22 @@ public class EasyConnect extends Service {
     }
 
     static private boolean _push_data (String feature, String data) {
-        String url;
-		try {
-			url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ data;
-	        return HttpRequest.get(url).status_code == 200;
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
+    	if (!upstream_thread_pool.containsKey(feature)) {
+    		UpStreamThread ust = new UpStreamThread(feature);
+    		upstream_thread_pool.put(feature, ust);
+    		ust.start();
+    	}
 		return false;
+    }
+
+    static public void push_data2 (String feature, JSONArray data) {
+    	if (!upstream_thread_pool.containsKey(feature)) {
+    		UpStreamThread ust = new UpStreamThread(feature);
+    		upstream_thread_pool.put(feature, ust);
+    		ust.start();
+    	}
+    	UpStreamThread ust = upstream_thread_pool.get(feature);
+    	ust.enqueue(data);
     }
 
     static public JSONObject pull_data (String feature) {
@@ -468,6 +585,9 @@ public class EasyConnect extends Service {
     }
 
     static public void detach () {
+		for (String feature: upstream_thread_pool.keySet()) {
+			upstream_thread_pool.get(feature).stop_working();
+		}
     	DetachThread.work();
     }
     
