@@ -287,6 +287,7 @@ public class EasyConnect extends Service {
     	
     	public void stop_working () {
 			working_permission = false;
+			this.interrupt();
     	}
     	
     	public void enqueue (JSONArray data) {
@@ -335,6 +336,10 @@ public class EasyConnect extends Service {
     				double[] buffer = new double[dimension];
     				if (!queueable) {
     					JSONArray tmp = queue.take();
+    					if (!working_permission) {
+    			    		logging("UpStreamThread("+ feature +") interrupted");
+    						return;
+    					}
     					for (int i = 0; i < tmp.length(); i++) {
     						buffer[i] = tmp.getDouble(i);
     					}
@@ -342,6 +347,10 @@ public class EasyConnect extends Service {
 	    				int buffer_count = 0;
 	    				do {
 	    					JSONArray tmp = queue.take();
+	    					if (!working_permission) {
+	    			    		logging("UpStreamThread("+ feature +") interrupted");
+	    						return;
+	    					}
 	    					for (int i = 0; i < dimension; i++) {
 	    						buffer[i] += tmp.getDouble(i);
 	    					}
