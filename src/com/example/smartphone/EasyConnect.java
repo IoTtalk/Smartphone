@@ -500,6 +500,18 @@ public class EasyConnect extends Service {
         return "defema"+ get_mac_addr();
     }
     
+    static public String get_d_name () {
+    	try {
+    		if (profile == null) {
+    			return "Error";
+    		}
+			return profile.getString("d_name");
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+    	return "Error";
+    }
+    
     static public void register (Handler handler) {
     	if (subscribers == null) {
     		subscribers = new HashSet<Handler>();

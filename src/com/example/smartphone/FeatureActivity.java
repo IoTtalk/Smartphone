@@ -136,6 +136,11 @@ public class FeatureActivity extends Activity {
     	    }
     	};
     	EasyConnect.register(ec_status_handler);
+    	
+    	String d_name = EasyConnect.get_d_name();
+    	logging("Get d_name:"+ d_name);
+		TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
+		tv_d_name.setText(d_name);
 
     }
     
