@@ -272,16 +272,12 @@ public class EasyConnect extends Service {
     	// or it may block other threads
     	boolean working_permission;
     	String feature;
-    	LinkedBlockingQueue<JSONArray> queue;
-    	int dimension;
-    	boolean queueable;
+    	LinkedBlockingQueue<EasyConnectDataObject> queue;
     	long timestamp;
     	
     	public UpStreamThread (String feature) {
     		this.feature = feature;
-    		this.queue = new LinkedBlockingQueue<JSONArray>();
-    		this.dimension = 0;
-    		this.queueable = false;
+    		this.queue = new LinkedBlockingQueue<EasyConnectDataObject>();
     		this.timestamp = 0;
     	}
     	
@@ -290,37 +286,12 @@ public class EasyConnect extends Service {
 			this.interrupt();
     	}
     	
-    	public void enqueue (JSONArray data) {
-    		if (dimension == 0) {
-    			try {
-    				// check if the data is queueable
-    				// which means every dimension is in "double" type
-					dimension = data.length();
-					queueable = true;
-					for (int i = 0; i < dimension; i++) {
-						if (!(data.get(i) instanceof Double)) {
-							queueable = false;
-						}
-					}
-				} catch (JSONException e) {
-					e.printStackTrace();
-				}
-    		}
-    		
-    		if (queueable) {
-	    		try {
-					queue.put(data);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-    		} else {
-    			try {
-        			queue.clear();
-					queue.put(data);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				};
-    		}
+    	public void enqueue (EasyConnectDataObject data) {
+    		try {
+				queue.put(data);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
     	}
     	
     	public void run () {
@@ -333,46 +304,28 @@ public class EasyConnect extends Service {
         				Thread.sleep(now - timestamp);
         			}
     				timestamp = now;
-    				double[] buffer = new double[dimension];
-    				if (!queueable) {
-    					JSONArray tmp = queue.take();
+    				
+					EasyConnectDataObject acc = queue.take();
+    				int buffer_count = 1;
+    				while (!queue.isEmpty()) {
+    					EasyConnectDataObject tmp = queue.take();
     					if (!working_permission) {
-    			    		logging("UpStreamThread("+ feature +") interrupted");
+        		    		logging("UpStreamThread("+ feature +") droped");
     						return;
     					}
-    					for (int i = 0; i < tmp.length(); i++) {
-    						buffer[i] = tmp.getDouble(i);
-    					}
-    				} else {
-	    				int buffer_count = 0;
-	    				do {
-	    					JSONArray tmp = queue.take();
-	    					if (!working_permission) {
-	    			    		logging("UpStreamThread("+ feature +") interrupted");
-	    						return;
-	    					}
-	    					for (int i = 0; i < dimension; i++) {
-	    						buffer[i] += tmp.getDouble(i);
-	    					}
-	    					buffer_count += 1;
-	    				} while (!queue.isEmpty());
-	    				
-	    				if (buffer_count == 0) {
-	    					continue;
-	    				}
-	    				
-	    				for (int i = 0; i < dimension; i++) {
-	    					buffer[i] /= buffer_count;
-	    				}
+    					acc.accumulate(tmp);
+    					buffer_count += 1;
     				}
+    				acc.average(buffer_count);
     				
     		        String url;
-    				url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ Arrays.toString(buffer).replace(" ", "");
-    				logging("UpStreamThread("+ feature +") push data: "+ Arrays.toString(buffer));
+    				url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ acc.toString();
+    				logging("UpStreamThread("+ feature +") push data: "+ acc.toString());
     		        HttpRequest.get(url);
     			} catch (JSONException e) {
     				e.printStackTrace();
     			} catch (InterruptedException e) {
+		    		logging("UpStreamThread("+ feature +") interrupted");
 					e.printStackTrace();
 				}
     		}
@@ -455,6 +408,145 @@ public class EasyConnect extends Service {
     	return self;
     }
     
+    static private class EasyConnectDataObject {
+    	private Object value;
+    	
+    	static private boolean is_double_array (Object obj) {
+    		if (obj instanceof JSONArray) {
+				try {
+	    			JSONArray tmp = (JSONArray)obj;
+	    			for (int i = 0; i < tmp.length(); i++) {
+						if (!(tmp.get(i) instanceof Double)) {
+				    		return false;
+						}
+	    			}
+	    			// YA, it's double array
+	    			return true;
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+			}
+    		if (obj instanceof double[]) {
+    			return true;
+    		} else if (obj instanceof float[]) {
+    			return true;
+    		}
+    		return false;
+    	}
+    	
+    	static private double[] to_double_array (Object obj) throws JSONException {
+    		if (obj instanceof JSONArray) {
+    			JSONArray tmp = (JSONArray)obj;
+    			int length = tmp.length();
+    			double[] ret = new double[length];
+    			for (int i = 0; i < length; i++) {
+					ret[i] = tmp.getDouble(i);
+    			}
+    			return ret;
+    		} else if (obj instanceof float[]) {
+    			float[] tmp = (float[])obj;
+    			int length = tmp.length;
+    			double[] ret = new double[length];
+    			for (int i = 0; i < length; i++) {
+					ret[i] = (double)tmp[i];
+    			}
+    			return ret;
+    		}
+    		return null;
+    	}
+    	
+    	public EasyConnectDataObject (Object obj) {
+    		if (is_double_array(obj)) {
+    			try {
+					value = to_double_array(obj);
+				} catch (JSONException e) {
+		    		value = obj;
+					e.printStackTrace();
+				}
+    		} else {
+    			value = obj;
+    		}
+    	}
+    	
+    	@Override
+    	public String toString () {
+    		if (value instanceof Integer || value instanceof Float || value instanceof Double) {
+    			return "["+ value +"]";
+    		} else if (value instanceof int[]) {
+    			return Arrays.toString((int[])value).replace(" ", "");
+    		} else if (value instanceof float[]) {
+    			return Arrays.toString((float[])value).replace(" ", "");
+    		} else if (value instanceof double[]) {
+    			return Arrays.toString((double[])value).replace(" ", "");
+    		} else if (value instanceof byte[]) {
+    			return Arrays.toString((byte[])value).replace(" ", "");
+    		} else if (value instanceof String) {
+    			return "\""+ (String)value +"\"";
+    		} else if (value instanceof JSONArray) {
+    			return ((JSONArray)value).toString().replace(" ", "");
+    		} else if (value instanceof JSONObject) {
+    			return ((JSONObject)value).toString().replace(" ", "");
+    		}
+    		return "";
+    	}
+    	
+    	public void accumulate (EasyConnectDataObject obj) {
+    		if (!value.getClass().equals(obj.value.getClass())) {
+    			return;
+    		}
+    		
+    		if (value instanceof Integer) {
+    			value = (int)value + (int)obj.value;
+    		} else if (value instanceof Float) {
+    			value = (float)value + (float)obj.value;
+    		} else if (value instanceof Double) {
+    			value = (double)value + (double)obj.value;
+    		} else if (value instanceof int[]) {
+    			for (int i = 0; i < ((int[])value).length; i++) {
+    				((int[])value)[i] += ((int[])obj.value)[i];
+    			}
+    		} else if (value instanceof float[]) {
+    			for (int i = 0; i < ((float[])value).length; i++) {
+    				((float[])value)[i] += ((float[])obj.value)[i];
+    			}
+    		} else if (value instanceof double[]) {
+    			for (int i = 0; i < ((double[])value).length; i++) {
+    				((double[])value)[i] += ((double[])obj.value)[i];
+    			}
+    		}
+    	}
+    	
+    	public void average (int count) {
+    		if (value instanceof Integer) {
+    			value = (int)((int)value / count);
+    		} else if (value instanceof Float) {
+    			value = (float)value / count;
+    		} else if (value instanceof Double) {
+    			value = (double)value / count;
+    		} else if (value instanceof int[]) {
+    			for (int i = 0; i < ((int[])value).length; i++) {
+    				((int[])value)[i] = (int)(((int[])value)[i] / count);
+    			}
+    		} else if (value instanceof float[]) {
+    			for (int i = 0; i < ((float[])value).length; i++) {
+    				((float[])value)[i] = ((float[])value)[i] / count;
+    			}
+    		} else if (value instanceof double[]) {
+    			for (int i = 0; i < ((double[])value).length; i++) {
+    				((double[])value)[i] = ((double[])value)[i] / count;
+    			}
+    		} else if (value instanceof JSONArray) {
+    			return; // good JSONArray is translated into double[]
+    		} else if (value instanceof byte[]) {
+    			return;	// don't accumulate byte[]
+    		} else if (value instanceof String) {
+    			return;	// don't know now to accumulate String
+    		} else if (value instanceof JSONObject) {
+    			return;	// don't know now to accumulate JSONObject
+    		}
+    	}
+    }
+    
     // ************** //
     // * Public API * //
     // ************** //
@@ -528,46 +620,12 @@ public class EasyConnect extends Service {
     	RegisterThread.work();
     }
 
-    static public boolean push_data (String feature, int data) {
-        return _push_data(feature, "["+ data +"]");
+    static public void push_data (String feature, Object data) {
+    	EasyConnectDataObject ary = new EasyConnectDataObject(data);
+        push_data(feature, ary);
     }
-    static public boolean push_data (String feature, int[] data) {
-        return _push_data(feature, Arrays.toString(data).replace(" ", ""));
-    }
-    static public boolean push_data (String feature, float data) {
-        return _push_data(feature, "["+ data +"]");
-    }
-    static public boolean push_data (String feature, float[] data) {
-        return _push_data(feature, Arrays.toString(data).replace(" ", ""));
-    }
-    static public boolean push_data (String feature, double data) {
-        return _push_data(feature, "["+ data +"]");
-    }
-    static public boolean push_data (String feature, double[] data) {
-        return _push_data(feature, Arrays.toString(data).replace(" ", ""));
-    }
-    static public boolean push_data (String feature, byte[] data) {
-        return _push_data(feature, Arrays.toString(data).replace(" ", ""));
-    }
-    static public boolean push_data (String feature, JSONArray data) {
-        return _push_data(feature, data.toString().replace(" ", ""));
-    }
-    static public boolean push_data (String feature, String data) {
-    	return _push_data(feature, "[\""+ data +"\"]");
-    }
-
-    static private boolean _push_data (String feature, String data) {
-        String url;
-		try {
-			url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ data;
-	        return HttpRequest.get(url).status_code == 200;
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-		return false;
-    }
-
-    static public void push_data2 (String feature, JSONArray data) {
+    
+    static private void push_data (String feature, EasyConnectDataObject data) {
     	if (!upstream_thread_pool.containsKey(feature)) {
     		UpStreamThread ust = new UpStreamThread(feature);
     		upstream_thread_pool.put(feature, ust);
