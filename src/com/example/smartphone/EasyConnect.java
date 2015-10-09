@@ -26,6 +26,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
@@ -49,8 +51,9 @@ public class EasyConnect extends Service {
     static public  int      EC_BROADCAST_PORT = 17000;
     static private JSONObject profile;
     static private boolean ec_status = false;
-    
+
     static HashMap<String, UpStreamThread> upstream_thread_pool;
+    static HashMap<String, DownStreamThread> downstream_thread_pool;
     
     @Override
     public IBinder onBind(Intent arg0) {
@@ -61,6 +64,7 @@ public class EasyConnect extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
     	self = this;
     	upstream_thread_pool = new HashMap<String, UpStreamThread>();
+    	downstream_thread_pool = new HashMap<String, DownStreamThread>();
     	show_ec_status_on_notification(ec_status);
     	DetectLocalECThread.work();
     	return START_STICKY;
@@ -301,7 +305,7 @@ public class EasyConnect extends Service {
     			try {
         			long now = System.currentTimeMillis();
         			if (now - timestamp < 150) {
-        				Thread.sleep(now - timestamp);
+        				Thread.sleep(150 - (now - timestamp));
         			}
     				timestamp = now;
     				
@@ -330,6 +334,162 @@ public class EasyConnect extends Service {
 				}
     		}
     		logging("UpStreamThread("+ feature +") stops");
+    	}
+    }
+    
+    static private class DownStreamThread extends Thread {
+    	// DownStreamThread cannot be singleton,
+    	// or it may block other threads
+    	boolean working_permission;
+    	String feature;
+    	String url;
+    	Handler subscriber;
+    	long timestamp;
+    	String data_timestamp;
+    	
+    	public DownStreamThread (String feature, Handler callback) {
+    		this.feature = feature;
+    		try {
+				this.url = "http://"+ EC_HOST +"/pull/"+ profile.getString("d_id") +"/"+ feature;
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    		this.subscriber = callback;
+    		this.timestamp = 0;
+    	}
+    	
+    	public void stop_working () {
+			working_permission = false;
+			this.interrupt();
+    	}
+    	
+    	public void run () {
+    		logging("DownStreamThread("+ feature +") starts");
+    		working_permission = true;
+    		data_timestamp = "";
+    		while (working_permission) {
+    			try {
+        			long now = System.currentTimeMillis();
+        			if (now - timestamp < 150) {
+        				Thread.sleep(150 - (now - timestamp));
+        			}
+    				timestamp = now;
+			        HttpRequest.HttpResponse a = HttpRequest.get(url);
+			        if (a.status_code == 200) {
+	                	deliver_data(new JSONObject(a.body));
+			        }
+	            } catch (JSONException e) {
+	                e.printStackTrace();
+    			} catch (InterruptedException e) {
+		    		logging("DownStreamThread("+ feature +") interrupted");
+					e.printStackTrace();
+				}
+    		}
+    		logging("DownStreamThread("+ feature +") stops");
+    	}
+    	
+    	private void deliver_data (JSONObject data) throws JSONException {
+    		if (data.getString("timestamp").equals(data_timestamp)) {
+    			return;
+    		}
+    		data_timestamp = data.getString("timestamp");
+    		// We got new data
+            Message msgObj = subscriber.obtainMessage();
+            Bundle bundle = new Bundle();
+            bundle.putParcelable("dataset", new DataSet(data));
+            msgObj.setData(bundle);
+            subscriber.sendMessage(msgObj);
+    	}
+    }
+    
+    static public class DataSet implements Parcelable {
+    	public String timestamp;
+    	private JSONArray dataset;
+    	private JSONArray dataset_timestamp;
+    	
+    	public DataSet (Parcel in) {
+    		this.timestamp = in.readString();
+			this.dataset = null;
+			this.dataset_timestamp = null;
+			
+			try {
+				this.dataset = new JSONArray(in.readString());
+				this.dataset_timestamp = new JSONArray(in.readString());
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    	}
+    	
+    	public DataSet (JSONObject in) {
+			this.timestamp = "";
+			this.dataset = null;
+			this.dataset_timestamp = null;
+			
+    		try {
+				this.timestamp = in.getString("timestamp");
+				this.dataset = in.getJSONArray("data");
+				this.dataset_timestamp = in.getJSONArray("timestamp_full");
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    	}
+    	
+    	public Data newest () {
+    		Data ret = new Data();
+    		try {
+				ret.timestamp = this.dataset_timestamp.getString(0);
+	    		ret.data = this.dataset.getJSONArray(0);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    		return ret;
+    	}
+    	
+    	@Override
+    	public String toString () {
+    		JSONObject ret = new JSONObject();
+    		try {
+				ret.put("timestamp", this.timestamp);
+	    		ret.put("data", this.dataset);
+	    		ret.put("timestamp_full", this.dataset_timestamp);
+	    		return ret.toString();
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    		return "";
+    	}
+
+		@Override
+		public int describeContents() {
+			return 0;
+		}
+
+		@Override
+		public void writeToParcel(Parcel dest, int flags) {
+			dest.writeString(this.timestamp);
+			dest.writeString(this.dataset.toString());
+			dest.writeString(this.dataset_timestamp.toString());
+		}
+		
+		public static final Parcelable.Creator<DataSet> CREATOR
+		        = new Parcelable.Creator<DataSet>() {
+		    public DataSet createFromParcel(Parcel in) {
+		        return new DataSet(in);
+		    }
+		
+		    public DataSet[] newArray(int size) {
+		        return new DataSet[size];
+		    }
+		};
+    }
+    
+    static public class Data {
+    	public String timestamp;
+    	public JSONArray data;
+    	
+    	public Data () {
+    		this.timestamp = "";
+    		this.data = null;
     	}
     }
     
@@ -633,6 +793,22 @@ public class EasyConnect extends Service {
     	}
     	UpStreamThread ust = upstream_thread_pool.get(feature);
     	ust.enqueue(data);
+    }
+    
+    static public void subscribe (String feature, Handler callback) {
+    	if (!downstream_thread_pool.containsKey(feature)) {
+    		DownStreamThread dst = new DownStreamThread(feature, callback);
+    		downstream_thread_pool.put(feature, dst);
+    		dst.start();
+    	}
+    }
+    
+    static public void unsubscribe (String feature) {
+		DownStreamThread dst = downstream_thread_pool.get(feature);
+		if (dst != null) {
+			dst.stop_working();
+			downstream_thread_pool.remove(feature);
+		}
     }
 
     static public JSONObject pull_data (String feature) {

@@ -3,6 +3,7 @@ package com.example.smartphone;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -12,6 +13,7 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Message;
 import android.util.Log;
 
 public class SpeakerService extends Service {
@@ -38,7 +40,7 @@ public class SpeakerService extends Service {
         working = false;
         data_handler = null;
         handler_thread = null;
-        notify_message("constructor");
+        logging("constructor");
     }
     
     static boolean is_running () {
@@ -49,7 +51,7 @@ public class SpeakerService extends Service {
     public void onCreate () {
         running = true;
         working = false;
-        notify_message("onCreate");
+        logging("onCreate");
         
         sound_name_table = new HashMap<String, Integer>();
         sound_name_table.put("Do-", 262);
@@ -87,13 +89,23 @@ public class SpeakerService extends Service {
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-    	
         if ( !working ) {
             ATM=new AudioTrackManager();
-            new DownThread().start();
+//            new DownThread().start();
+            Handler handler = new Handler () {
+            	public void handleMessage (Message msg) {
+            		EasyConnect.DataSet ds = msg.getData().getParcelable("dataset");
+            		try {
+                		logging(ds.timestamp +": "+ ds.newest().data.getInt(0));
+					} catch (JSONException e) {
+						e.printStackTrace();
+					}
+        	    }
+            };
+            EasyConnect.subscribe("Speaker", handler);
             
         } else {
-            notify_message("already initialized");
+            logging("already initialized");
             
         }
         return Service.START_NOT_STICKY;
@@ -133,12 +145,12 @@ public class SpeakerService extends Service {
             int same_count = 0;
         	
         	working = true;
-            notify_message("DownThread start running");
+            logging("DownThread start running");
             
             while (working) {
             	//JSONObject data = DeFeMa.pull_data("Speaker");
             	JSONObject data = EasyConnect.pull_data("Speaker");
-            	notify_message(data.toString());
+            	logging(data.toString());
             	
             	try {
 					if ( !timestamp.equals( data.getString("timestamp") ) ) {
@@ -165,7 +177,7 @@ public class SpeakerService extends Service {
 						
 					} else {
 						same_count++;
-						notify_message("Same data " + same_count);
+						logging("Same data " + same_count);
 						if (same_count == 15) {
 							// container data not updating, stop first
 							ATM.isPlaySound = false;
@@ -188,7 +200,7 @@ public class SpeakerService extends Service {
 			ATM.isPlaySound = false;
 			ATM.stop();
             
-            notify_message("DownThread ends");
+            logging("DownThread ends");
             
         }
     }
@@ -202,15 +214,10 @@ public class SpeakerService extends Service {
     public void onDestroy () {
         running = false;
         working = false;
-        
+        EasyConnect.unsubscribe("Speaker");
     }
-    
-    boolean logging = true;
 
-    private void notify_message (String message) {
-        
-        if ( !logging ) return;
-        
+    private void logging (String message) {
         Log.i(C.log_tag, "[SpeakerService] " + message);
     }
     
