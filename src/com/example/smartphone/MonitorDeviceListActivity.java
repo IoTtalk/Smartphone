@@ -3,10 +3,12 @@ package com.example.smartphone;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
+
 import org.achartengine.GraphicalView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
@@ -21,6 +23,7 @@ import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+
 import com.example.smartphone.R;
 
 public class MonitorDeviceListActivity extends Activity {
@@ -102,7 +105,16 @@ public class MonitorDeviceListActivity extends Activity {
             }
         });
         
-		MonitorDataThread.set_device_list_handler(message_handler);
+//		MonitorDataThread.set_device_list_handler(message_handler);
+        Handler handler = new Handler() {
+    	    public void handleMessage (Message msg) {
+        		EasyConnect.DataSet ds = msg.getData().getParcelable("dataset");
+        		JSONObject obj = (JSONObject)ds.newest().data;
+				newest_raw_data_copy = obj;
+				update_index();
+    	    }
+    	};
+    	EasyConnect.subscribe("Display", handler);
 		
 	}
 	
@@ -118,6 +130,7 @@ public class MonitorDeviceListActivity extends Activity {
 	@Override
 	public void onDestroy () {
 		super.onDestroy();
+    	EasyConnect.unsubscribe("Display");
 		MonitorDataThread.set_device_list_handler(null);
 	}
 	

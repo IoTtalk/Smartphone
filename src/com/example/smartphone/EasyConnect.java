@@ -440,7 +440,7 @@ public class EasyConnect extends Service {
     		Data ret = new Data();
     		try {
 				ret.timestamp = this.dataset_timestamp.getString(0);
-	    		ret.data = this.dataset.getJSONArray(0);
+	    		ret.data = this.dataset.get(0);
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
@@ -487,7 +487,7 @@ public class EasyConnect extends Service {
     
     static public class Data {
     	public String timestamp;
-    	public JSONArray data;
+    	public Object data;
     	
     	public Data () {
     		this.timestamp = "";
@@ -846,6 +846,9 @@ public class EasyConnect extends Service {
     static public void detach () {
 		for (String feature: upstream_thread_pool.keySet()) {
 			upstream_thread_pool.get(feature).stop_working();
+		}
+		for (String feature: downstream_thread_pool.keySet()) {
+			downstream_thread_pool.get(feature).stop_working();
 		}
     	DetachThread.work();
     }

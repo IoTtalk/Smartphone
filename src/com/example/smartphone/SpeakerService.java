@@ -3,8 +3,8 @@ package com.example.smartphone;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import android.app.Service;
 import android.content.Intent;
@@ -97,8 +97,8 @@ public class SpeakerService extends Service {
             	public void handleMessage (Message msg) {
             		EasyConnect.DataSet ds = msg.getData().getParcelable("dataset");
             		try {
-                		logging(ds.timestamp +": "+ ds.newest().data.getInt(0));
-                		int new_sound_Hz = get_sound_rate(ds.newest().data.getInt(0));
+                		logging(ds.timestamp +": "+ ((JSONArray)(ds.newest().data)).getInt(0));
+                		int new_sound_Hz = get_sound_rate(((JSONArray)(ds.newest().data)).getInt(0));
                 		logging("new_sound_Hz: "+ new_sound_Hz);
 						if ( current_sound_Hz != new_sound_Hz ) {
 							if (current_sound_Hz == 0) {
