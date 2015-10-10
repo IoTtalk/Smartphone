@@ -392,6 +392,10 @@ public class EasyConnect extends Service {
     		if (data.getString("timestamp").equals(data_timestamp)) {
     			return;
     		}
+    		if (data.getJSONArray("data").length() == 0) {
+    			// server responded, but the container is empty
+    			return;
+    		}
     		data_timestamp = data.getString("timestamp");
     		// We got new data
             Message msgObj = subscriber.obtainMessage();

@@ -3,7 +3,6 @@ package com.example.smartphone;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -22,6 +21,7 @@ public class SpeakerService extends Service {
     static private boolean working = false;
     HandlerThread handler_thread;
     Handler data_handler;
+    int current_sound_Hz;
 
 	AudioTrackManager ATM;
 
@@ -90,13 +90,27 @@ public class SpeakerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if ( !working ) {
+        	working = true;
             ATM=new AudioTrackManager();
-//            new DownThread().start();
+            current_sound_Hz = 0;
             Handler handler = new Handler () {
             	public void handleMessage (Message msg) {
             		EasyConnect.DataSet ds = msg.getData().getParcelable("dataset");
             		try {
                 		logging(ds.timestamp +": "+ ds.newest().data.getInt(0));
+                		int new_sound_Hz = get_sound_rate(ds.newest().data.getInt(0));
+                		logging("new_sound_Hz: "+ new_sound_Hz);
+						if ( current_sound_Hz != new_sound_Hz ) {
+							if (current_sound_Hz == 0) {
+								ATM.isPlaySound = false;
+								ATM.stop();
+							}
+							current_sound_Hz = new_sound_Hz;
+							ATM.setTone(current_sound_Hz);
+							ATM.genTone();
+							ATM.isPlaySound = true;
+					        ATM.playSound();
+						}
 					} catch (JSONException e) {
 						e.printStackTrace();
 					}
@@ -112,97 +126,21 @@ public class SpeakerService extends Service {
     }
     
     public int get_sound_rate (Object o) {
-    	
     	if ( o instanceof Integer ) {
     		int i = ((Integer) o).intValue();
-    		
-    		if (0 <= i && i <= sound_index_table.length) {
+    		if (0 <= i && i < sound_index_table.length) {
     			return sound_index_table[i];
     		}
-    		
-    		return i;
+    		return 0;
     	}
-    	
     	if ( o instanceof String ) {
-    		Object s = sound_name_table.get(o);
-    		
+    		Integer s = sound_name_table.get(o);
     		if (s == null) {
     			return 0;
     		}
-    		
-    		return (int) s;
+    		return s;
     	}
-    	
     	return 0;
-    }
-    
-    class DownThread extends Thread {
-        @Override
-        public void run () {
-        	
-            String timestamp = "";
-            int current_sound_Hz = 0;
-            int same_count = 0;
-        	
-        	working = true;
-            logging("DownThread start running");
-            
-            while (working) {
-            	//JSONObject data = DeFeMa.pull_data("Speaker");
-            	JSONObject data = EasyConnect.pull_data("Speaker");
-            	logging(data.toString());
-            	
-            	try {
-					if ( !timestamp.equals( data.getString("timestamp") ) ) {
-						same_count = 0;
-						timestamp = data.getString("timestamp");
-						
-						int new_sound_Hz = get_sound_rate( data.getJSONArray("data").getJSONArray(0).get(0) );
-						
-						if ( current_sound_Hz != new_sound_Hz ) {
-							
-							if (current_sound_Hz == 0) {
-								ATM.isPlaySound = false;
-								ATM.stop();
-								
-							}
-							
-							current_sound_Hz = new_sound_Hz;
-							ATM.setTone(current_sound_Hz);
-							ATM.genTone();
-							ATM.isPlaySound = true;
-					        ATM.playSound();
-
-						}
-						
-					} else {
-						same_count++;
-						logging("Same data " + same_count);
-						if (same_count == 15) {
-							// container data not updating, stop first
-							ATM.isPlaySound = false;
-							ATM.stop();
-						}
-						
-					}
-					
-				} catch (JSONException e1) {
-					e1.printStackTrace();
-				}
-            	
-            	try {
-					Thread.sleep(150);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-            }
-            
-			ATM.isPlaySound = false;
-			ATM.stop();
-            
-            logging("DownThread ends");
-            
-        }
     }
 
     @Override
@@ -215,6 +153,8 @@ public class SpeakerService extends Service {
         running = false;
         working = false;
         EasyConnect.unsubscribe("Speaker");
+		ATM.isPlaySound = false;
+		ATM.stop();
     }
 
     private void logging (String message) {
