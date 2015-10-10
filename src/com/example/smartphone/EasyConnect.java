@@ -106,7 +106,6 @@ public class EasyConnect extends Service {
     	}
     	
     	private void process_easyconnect_packet (String _) {
-    		logging("Get EasyConnect UDP Packet from "+ _);
         	String new_ec_host = _ +":"+ EasyConnect.EC_PORT;
     		
     		if (verifying_ec_host == null) {
@@ -143,7 +142,6 @@ public class EasyConnect extends Service {
 				byte[] lmessage = new byte[20];
 				DatagramPacket packet = new DatagramPacket(lmessage, lmessage.length);
 				while (working_permission) {
-					logging("Wait for UDP packet");
                     socket.receive(packet);
                     String input_data = new String( lmessage, 0, packet.getLength() );
                     if (input_data.equals("easyconnect")) {
