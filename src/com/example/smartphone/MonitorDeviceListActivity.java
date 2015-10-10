@@ -114,8 +114,7 @@ public class MonitorDeviceListActivity extends Activity {
 				update_index();
     	    }
     	};
-    	EasyConnect.subscribe("Display", handler);
-		
+    	EasyConnect.subscribe("Display", handler, 500);
 	}
 	
 	@Override
@@ -204,13 +203,7 @@ public class MonitorDeviceListActivity extends Activity {
 		    			String f_name = iter2.next();
 		    			
 		    			if ( !(meta_index.getJSONObject(d_name).getJSONObject("features").has(f_name)) ) {
-		    				/* ``f_name`` did not exist in meta_index['d_name']['features'], create one for it */
-		    				JSONArray view_index_device_feature = view_index.getJSONObject(device_index).getJSONArray("features");
-		    				
-		    				JSONObject new_feature_view_record = new JSONObject();
-			    			new_feature_view_record.put("f_name", f_name);
-			    			
-			    			/* add a GraphicalView here */
+			    			// check data dimension
 			    			int argc = 1;
 			    			// many wrappings
 			    			//Object a = newest_raw_data_copy.getJSONObject(d_name).getJSONArray(f_name).get(0);
@@ -224,6 +217,17 @@ public class MonitorDeviceListActivity extends Activity {
 				    				argc = ((JSONArray)a).length();
 			    				}
 			    			}
+			    			
+			    			if (argc > 20) {
+			    				// dimension too large
+			    				continue;
+			    			}
+			    			
+		    				/* ``f_name`` did not exist in meta_index['d_name']['features'], create one for it */
+		    				JSONArray view_index_device_feature = view_index.getJSONObject(device_index).getJSONArray("features");
+		    				
+		    				JSONObject new_feature_view_record = new JSONObject();
+			    			new_feature_view_record.put("f_name", f_name);
 			    			
 			    			LineGraph line = new LineGraph(argc);
 			    			GraphicalView view = line.getView(MonitorDeviceListActivity.this);

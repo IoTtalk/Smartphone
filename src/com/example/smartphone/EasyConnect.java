@@ -305,7 +305,7 @@ public class EasyConnect extends Service {
         			if (now - timestamp < 150) {
         				Thread.sleep(150 - (now - timestamp));
         			}
-    				timestamp = now;
+    				timestamp = System.currentTimeMillis();
     				
 					EasyConnectDataObject acc = queue.take();
     				int buffer_count = 1;
@@ -344,8 +344,13 @@ public class EasyConnect extends Service {
     	Handler subscriber;
     	long timestamp;
     	String data_timestamp;
+    	int interval;
     	
     	public DownStreamThread (String feature, Handler callback) {
+    		this(feature, callback, 150);
+    	}
+    	
+    	public DownStreamThread (String feature, Handler callback, int interval) {
     		this.feature = feature;
     		try {
 				this.url = "http://"+ EC_HOST +"/pull/"+ profile.getString("d_id") +"/"+ feature;
@@ -354,6 +359,7 @@ public class EasyConnect extends Service {
 			}
     		this.subscriber = callback;
     		this.timestamp = 0;
+    		this.interval = interval;
     	}
     	
     	public void stop_working () {
@@ -368,15 +374,16 @@ public class EasyConnect extends Service {
     		while (working_permission) {
     			try {
         			long now = System.currentTimeMillis();
-        			if (now - timestamp < 150) {
-        				Thread.sleep(150 - (now - timestamp));
+        			if (now - timestamp < interval) {
+        				Thread.sleep(interval - (now - timestamp));
         			}
-    				timestamp = now;
+    				timestamp = System.currentTimeMillis();
 			        HttpRequest.HttpResponse a = HttpRequest.get(url);
 			        if (a.status_code == 200) {
 	                	deliver_data(new JSONObject(a.body));
 			        }
 	            } catch (JSONException e) {
+		    		logging("DownStreamThread("+ feature +") JSONException");
 	                e.printStackTrace();
     			} catch (InterruptedException e) {
 		    		logging("DownStreamThread("+ feature +") interrupted");
@@ -798,8 +805,12 @@ public class EasyConnect extends Service {
     }
     
     static public void subscribe (String feature, Handler callback) {
+    	subscribe(feature, callback, 150);
+    }
+    
+    static public void subscribe (String feature, Handler callback, int interval) {
     	if (!downstream_thread_pool.containsKey(feature)) {
-    		DownStreamThread dst = new DownStreamThread(feature, callback);
+    		DownStreamThread dst = new DownStreamThread(feature, callback, interval);
     		downstream_thread_pool.put(feature, dst);
     		dst.start();
     	}
