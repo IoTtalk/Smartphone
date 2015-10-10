@@ -27,8 +27,7 @@ public class LineGraph {
 	private XYMultipleSeriesDataset mDataset = new XYMultipleSeriesDataset();
 	private XYMultipleSeriesRenderer mRenderer = new XYMultipleSeriesRenderer(); // Holds a collection of XYSeriesRenderer and customizes the graph
 	
-	public LineGraph(int lines)
-	{
+	public LineGraph (int lines) {
 		dataset = new ArrayList<TimeSeries>();
 		rendererset = new ArrayList<XYSeriesRenderer>();
 		this.lines = lines;
@@ -67,8 +66,7 @@ public class LineGraph {
 		}
 	}
 	
-	public GraphicalView getView(Context context) 
-	{
+	public GraphicalView getView (Context context) {
 		view =  ChartFactory.getLineChartView(context, mDataset, mRenderer);
 		return view;
 	}
@@ -76,20 +74,24 @@ public class LineGraph {
 	private int chart_width = 40;
 	private int chart_padding = chart_width / 2;
 	
-	public void addNewPoints(int timestep, Object data)
-	{
+	public void addNewPoints (int timestep, Object data) {
 		if (data instanceof Integer && this.lines == 1) {
 			dataset.get(0).add(timestep, (int)data);
 			
 		} else if (data instanceof JSONArray && this.lines <= ((JSONArray)data).length() ) {
 			/* I'm not sure if this behavior makes sense: */
 			/* 	"if input data is more than you declared, ignore the rest" */
-			for (int i = 0; i < this.lines; i++) {
-				try {
-					dataset.get(i).add(timestep, ((JSONArray)data).getDouble(i) );
-				} catch (JSONException e) {
-					e.printStackTrace();
+			try {
+				// the data is wrapped one more JSONArray, unpack it
+				if (((JSONArray)data).get(0) instanceof JSONArray) {
+					data = ((JSONArray)data).get(0);
 				}
+				
+				for (int i = 0; i < this.lines; i++) {
+					dataset.get(i).add(timestep, ((JSONArray)data).getDouble(i) );
+				}
+			} catch (JSONException e) {
+				e.printStackTrace();
 			}
 			
 		}

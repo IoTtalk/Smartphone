@@ -218,7 +218,11 @@ public class MonitorDeviceListActivity extends Activity {
 			    			if (a instanceof Integer) {
 			    				argc = 1;
 			    			} else if (a instanceof JSONArray) {
-			    				argc = ((JSONArray)a).length();
+			    				if (((JSONArray)a).get(0) instanceof JSONArray) {
+			    					argc = ((JSONArray)a).getJSONArray(0).length();
+			    				} else {
+				    				argc = ((JSONArray)a).length();
+			    				}
 			    			}
 			    			
 			    			LineGraph line = new LineGraph(argc);
@@ -239,7 +243,6 @@ public class MonitorDeviceListActivity extends Activity {
 			    			
 			    			meta_index.getJSONObject(d_name).getJSONObject("features").put(f_name, view_index_device_feature.length());
 			    			view_index_device_feature.put(new_feature_view_record);				
-		    				
 		    			}
 	    			
 		    			/* now the LineGraph is ready, add point to it */
@@ -251,8 +254,13 @@ public class MonitorDeviceListActivity extends Activity {
 		    					.get("graph");
 		    			
 		    			// many wrappings
-		    			//line.addNewPoints(timestep , newest_raw_data_copy.getJSONObject(d_name).getJSONArray(f_name).get(0));
-		    			line.addNewPoints(timestep , newest_raw_data_copy.getJSONObject(d_name).get(f_name));
+		    			Object d = newest_raw_data_copy.getJSONObject(d_name).get(f_name);
+		    			if (d instanceof JSONArray) {
+		    				if (((JSONArray)d).get(0) instanceof JSONArray) {
+		    					d = ((JSONArray)d).getJSONArray(0);
+		    				}
+		    			}
+		    			line.addNewPoints(timestep , d);
 		    			
 		    			GraphicalView view = (GraphicalView)
 		    					view_index.getJSONObject(device_index)
