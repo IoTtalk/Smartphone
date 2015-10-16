@@ -191,6 +191,10 @@ public class EasyConnect extends Service {
     	
     	static public void stop_working () {
 			logging("RegisterThread.stop_working()");
+			if (self == null) {
+    			logging("Already stopped");
+				return;
+			}
     		working_permission = false;
     		self = null;
     	}
@@ -232,12 +236,7 @@ public class EasyConnect extends Service {
     	static DetachThread self;
     	private DetachThread () {}
     	
-    	static public void work() {
-    		if (!ec_status) {
-    			logging("Already detached");
-    	    	show_ec_status_on_notification(ec_status);
-    			return;
-    		}
+    	static public void work () {
     		
     		if (self != null) {
     			logging("already working");
@@ -252,8 +251,7 @@ public class EasyConnect extends Service {
         public void run () {
     		DetectLocalECThread.stop_working();
             RegisterThread.stop_working();
-            EasyConnect.self.getApplicationContext().stopService(new Intent(EasyConnect.self, EasyConnect.class));
-            self = null;
+            
             ec_status = false;
             boolean detach_result = detach_api();
     		
@@ -266,6 +264,8 @@ public class EasyConnect extends Service {
             // reset
         	EC_PORT = 9999;
         	EC_HOST = "openmtc.darkgerm.com:"+ EC_PORT;
+            EasyConnect.self.getApplicationContext().stopService(new Intent(EasyConnect.self, EasyConnect.class));
+            self = null;
     	}
     }
     
@@ -399,6 +399,9 @@ public class EasyConnect extends Service {
     		}
     		if (data.getJSONArray("data").length() == 0) {
     			// server responded, but the container is empty
+    			return;
+    		}
+    		if (data.getJSONArray("data").get(0).equals(null)) {
     			return;
     		}
     		data_timestamp = data.getString("timestamp");
@@ -873,6 +876,8 @@ public class EasyConnect extends Service {
 		try {
 			url = "http://"+ EC_HOST +"/create/"+ profile.getString("d_id") +"?profile="+ profile.toString().replace(" ", "");
 	        return HttpRequest.get(url).status_code == 200;
+		} catch (NullPointerException e) {
+			e.printStackTrace();
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -884,6 +889,8 @@ public class EasyConnect extends Service {
 		try {
 			url = "http://"+ EC_HOST +"/delete/"+ profile.getString("d_id");
 	        return HttpRequest.get(url).status_code == 200;
+		} catch (NullPointerException e) {
+			e.printStackTrace();
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}

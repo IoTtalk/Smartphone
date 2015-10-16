@@ -16,15 +16,12 @@ import android.os.Message;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
-
-import com.example.smartphone.R;
 
 public class MonitorDeviceListActivity extends Activity {
 	
@@ -109,9 +106,19 @@ public class MonitorDeviceListActivity extends Activity {
         Handler handler = new Handler() {
     	    public void handleMessage (Message msg) {
         		EasyConnect.DataSet ds = msg.getData().getParcelable("dataset");
-        		JSONObject obj = (JSONObject)ds.newest().data;
-				newest_raw_data_copy = obj;
-				update_index();
+    			try {
+	        		Object tmp = ds.newest().data;
+	        		JSONObject obj;
+	        		if (tmp instanceof JSONArray) {
+						obj = ((JSONArray)tmp).getJSONObject(0);
+	        		} else {
+	        			obj = (JSONObject)tmp;
+	        		}
+					newest_raw_data_copy = obj;
+					update_index();
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
     	    }
     	};
     	EasyConnect.subscribe("Display", handler, 500);
