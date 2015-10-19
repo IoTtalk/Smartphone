@@ -40,6 +40,8 @@ public class EasyConnect extends Service {
 	static HashSet<Handler> subscribers = null;
 	static public enum Tag {
 		D_NAME_GENEREATED,
+		ATTACH_TRYING,
+		ATTACH_FAILED,
 		ATTACH_SUCCESS,
 		DETACH_SUCCESS,
 	};
@@ -100,9 +102,7 @@ public class EasyConnect extends Service {
     			logging("Already stopped");
 				return;
 			}
-    		working_permission = false;
     		socket.close();
-    		self = null;
     	}
     	
     	private void process_easyconnect_packet (String _) {
@@ -134,7 +134,7 @@ public class EasyConnect extends Service {
     	}
     	
     	public void run () {
-			logging("Detection Thread starts");
+			logging("DetectLocalECThread starts");
     		try {
 				socket = new DatagramSocket(null);
 				socket.setReuseAddress(true);
@@ -151,7 +151,6 @@ public class EasyConnect extends Service {
                     	process_easyconnect_packet(ec_addr);
                     }
                 }
-				socket.close();
 			} catch (SocketException e) {
 				logging("SocketException");
 				e.printStackTrace();
@@ -159,8 +158,9 @@ public class EasyConnect extends Service {
 				logging("IOException");
 				e.printStackTrace();
 			} finally {
-				DetectLocalECThread.stop_working();
-				logging("Detection Thread stops");
+				logging("DetectLocalECThread stops");
+	    		working_permission = false;
+	    		self = null;
 			}
     	}
     }
@@ -195,40 +195,42 @@ public class EasyConnect extends Service {
     			logging("Already stopped");
 				return;
 			}
-    		working_permission = false;
-    		self = null;
+			self.interrupt();
     	}
     	
     	@Override
         public void run () {
     		logging("RegisterThread starts");
     		boolean attach_success = false;
+    		notify_all_subscribers(Tag.ATTACH_TRYING, EC_HOST);
     		
         	try {
 				notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
 			} catch (JSONException e1) {
 				e1.printStackTrace();
 			}
-    		
-            while ( working_permission && !attach_success ) {
-            	attach_success = EasyConnect.attach_api(profile);
-
-    			if ( !attach_success ) {
-		    		logging("Attach failed, wait for 2000ms and try again");
-    				try {
+    		try {
+	            while ( working_permission && !attach_success ) {
+	            	attach_success = EasyConnect.attach_api(profile);
+	
+	    			if ( !attach_success ) {
+	    	    		notify_all_subscribers(Tag.ATTACH_FAILED, EC_HOST);
+			    		logging("Attach failed, wait for 2000ms and try again");
 						Thread.sleep(2000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-		    		
-    			} else {
-		    		logging("Attach Successed");
-            		show_ec_status_on_notification(true);
-    			}
-    			
-            }
-            logging("RegisterThread stops");
-            RegisterThread.stop_working();
+			    		
+	    			} else {
+			    		logging("Attach Successed");
+	            		show_ec_status_on_notification(true);
+	    			}
+	    			
+	            }
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} finally {
+	            logging("RegisterThread stops");
+	    		working_permission = false;
+	    		self = null;
+			}
     	}
     }
     
@@ -237,7 +239,6 @@ public class EasyConnect extends Service {
     	private DetachThread () {}
     	
     	static public void work () {
-    		
     		if (self != null) {
     			logging("already working");
     	    	show_ec_status_on_notification(ec_status);
