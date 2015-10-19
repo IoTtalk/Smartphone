@@ -82,7 +82,7 @@ public class EasyConnect extends Service {
     	
     	static DatagramSocket socket;
     	static boolean working_permission;
-    	static String verifying_ec_host = null;
+    	static String candidate_ec_host = null;
     	static int receive_count = 0;
     	
     	static public void work () {
@@ -103,34 +103,6 @@ public class EasyConnect extends Service {
 				return;
 			}
     		socket.close();
-    	}
-    	
-    	private void process_easyconnect_packet (String _) {
-        	String new_ec_host = _ +":"+ EasyConnect.EC_PORT;
-    		
-    		if (verifying_ec_host == null) {
-    			verifying_ec_host = new_ec_host;
-    		}
-    		
-    		if (EC_HOST.equals(DEFAULT_EC_HOST)) {
-    			// we are now on default EC, and we should use local EC first
-    			receive_count = 10;
-    		} else if (verifying_ec_host.equals(new_ec_host)) {
-    			// contiguously receiving EC packet
-        		receive_count += 1;
-    		} else {
-    			receive_count = 0;
-    		}
-    		
-    		// prevent overflow
-    		if (receive_count >= 10) {
-    			receive_count = 10;
-    		}
-    		
-        	if (receive_count >= 5 && !EC_HOST.equals(verifying_ec_host)) {
-        		boolean reattach_successed = EasyConnect.reattach_to(new_ec_host);
-            	show_ec_status_on_notification(reattach_successed);
-        	}
     	}
     	
     	public void run () {
@@ -163,6 +135,45 @@ public class EasyConnect extends Service {
 	    		self = null;
 			}
     	}
+    	
+    	private void process_easyconnect_packet (String _) {
+        	String new_ec_host = _ +":"+ EasyConnect.EC_PORT;
+    		
+    		if (EC_HOST.equals(DEFAULT_EC_HOST)) {
+    			// we are now on default EC, and we should use local EC first
+    			candidate_ec_host = new_ec_host;
+    			receive_count = 10;
+    		} else if (receive_count == 0 || !candidate_ec_host.equals(new_ec_host)) {
+    			// we don't have any candidate host, or found another host
+    			candidate_ec_host = new_ec_host;
+    			receive_count = 1;
+    		} else {
+    			// contiguously receiving EC packet from the same host
+        		receive_count += 1;
+    		}
+    		
+    		// prevent overflow
+    		if (receive_count >= 10) {
+    			receive_count = 10;
+    		}
+    		
+        	if (!EC_HOST.equals(candidate_ec_host) && receive_count >= 5) {
+        		// we have different ec host, and it's stable
+        		boolean reattach_successed = reattach_to(new_ec_host);
+            	show_ec_status_on_notification(reattach_successed);
+        	}
+    	}
+        
+        static private boolean reattach_to (String new_host) {
+        	if (!ec_status) {
+            	EC_HOST = new_host;
+        		return false;
+        	}
+    		detach_api();
+        	EC_HOST = new_host;
+        	logging("Reattach to "+ new_host);
+        	return attach_api(profile);
+        }
     }
     
     static private class RegisterThread extends Thread {
@@ -211,6 +222,9 @@ public class EasyConnect extends Service {
 			}
     		try {
 	            while ( working_permission && !attach_success ) {
+	            	if (ec_status) {
+	            		break;
+	            	}
 	            	attach_success = EasyConnect.attach_api(profile);
 	
 	    			if ( !attach_success ) {
@@ -541,13 +555,6 @@ public class EasyConnect extends Service {
         
         notification_builder.setContentIntent(pending_intent);
         notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
-    }
-    
-    static private boolean reattach_to (String new_host) {
-    	detach_api();
-    	EC_HOST = new_host;
-    	logging("Reattach to "+ new_host);
-    	return attach_api(profile);
     }
 
     static private void logging (String message) {
