@@ -742,7 +742,13 @@ public class EasyConnect extends Service {
     	// start this service
         Intent intent = new Intent (ctx, EasyConnect.class);
         ctx.getApplicationContext().startService(intent);
-        on_click_action = ctx.getClass();
+        if (on_click_action == null) {
+        	on_click_action = ctx.getClass();
+        }
+    }
+    
+    static public void set_on_click_action (Class c) {
+    	on_click_action = c;
     }
     
     static public String get_mac_addr () {
