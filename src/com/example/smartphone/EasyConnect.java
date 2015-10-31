@@ -64,6 +64,7 @@ public class EasyConnect extends Service {
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+    	logging("onStartCommand()");
     	self = this;
     	upstream_thread_pool = new HashMap<String, UpStreamThread>();
     	downstream_thread_pool = new HashMap<String, DownStreamThread>();
@@ -533,6 +534,7 @@ public class EasyConnect extends Service {
     }
     
     static private void show_ec_status_on_notification () {
+    	logging("show notification: "+ ec_status);
     	Context ctx = get_reliable_context();
     	if (ctx == null) {
     		return;
@@ -676,11 +678,11 @@ public class EasyConnect extends Service {
     		}
     		
     		if (value instanceof Integer) {
-    			value = (int)value + (int)obj.value;
+    			value = (Integer)value + (Integer)obj.value;
     		} else if (value instanceof Float) {
-    			value = (float)value + (float)obj.value;
+    			value = (Float)value + (Float)obj.value;
     		} else if (value instanceof Double) {
-    			value = (double)value + (double)obj.value;
+    			value = (Double)value + (Double)obj.value;
     		} else if (value instanceof int[]) {
     			for (int i = 0; i < ((int[])value).length; i++) {
     				((int[])value)[i] += ((int[])obj.value)[i];
@@ -698,11 +700,11 @@ public class EasyConnect extends Service {
     	
     	public void average (int count) {
     		if (value instanceof Integer) {
-    			value = (int)((int)value / count);
+    			value = (int)((Integer)value / count);
     		} else if (value instanceof Float) {
-    			value = (float)value / count;
+    			value = (Float)value / count;
     		} else if (value instanceof Double) {
-    			value = (double)value / count;
+    			value = (Double)value / count;
     		} else if (value instanceof int[]) {
     			for (int i = 0; i < ((int[])value).length; i++) {
     				((int[])value)[i] = (int)(((int[])value)[i] / count);
@@ -740,6 +742,7 @@ public class EasyConnect extends Service {
     }
     
     static public String get_mac_addr () {
+    	logging("get_mac_addr()");
     	if (mac_addr_cache != null) {
     		logging("We have mac address cache: "+ mac_addr_cache);
     		return mac_addr_cache;
@@ -749,6 +752,7 @@ public class EasyConnect extends Service {
     	Context ctx = get_reliable_context();
     	
     	if (ctx == null) {
+    		logging("Oops, we have no reliable context");
     		return error_mac_addr;
     	}
     	

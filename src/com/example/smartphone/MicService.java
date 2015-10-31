@@ -1,7 +1,7 @@
 package com.example.smartphone;
 
 import org.json.JSONArray;
-import org.json.JSONException;
+import org.json.JSONObject;
 
 import android.app.Service;
 import android.content.Intent;
@@ -10,11 +10,8 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Binder;
 import android.os.Handler;
-import android.os.Handler.Callback;
 import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Looper;
-import android.os.Message;
 import android.util.Log;
 
 public class MicService extends Service {
@@ -105,7 +102,13 @@ public class MicService extends Service {
 	                currenttime = System.currentTimeMillis();
 	                int r = ar.read(buffer, 0, bs);
 	                // got raw data
-	                EasyConnect.push_data("Microphone-raw", buffer);
+	                JSONObject data = new JSONObject();
+	                JSONArray ary = new JSONArray();
+	                for (int i = 0; i < buffer.length; i++) {
+	                	ary.put(buffer[i]);
+	                }
+	                data.put("data", ary);
+	                EasyConnect.push_data("Microphone-raw", data);
 	                
 	                int v = 0;
 	                for (int i = 0; i < buffer.length; i++) {
