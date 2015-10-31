@@ -15,6 +15,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.app.Activity;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -34,6 +35,7 @@ import android.util.Log;
 public class EasyConnect extends Service {
 	static private EasyConnect self = null;
 	static private Context creater = null;
+	static private Class on_click_action;
 	static private String log_tag = "EasyConnect";
 	static private String mac_addr_cache = null;
 	
@@ -425,6 +427,7 @@ public class EasyConnect extends Service {
             Message msgObj = subscriber.obtainMessage();
             Bundle bundle = new Bundle();
             bundle.putParcelable("dataset", new DataSet(data));
+            bundle.putString("feature", feature);
             msgObj.setData(bundle);
             subscriber.sendMessage(msgObj);
     	}
@@ -551,7 +554,7 @@ public class EasyConnect extends Service {
         PendingIntent pending_intent = PendingIntent.getActivity(
         	ctx,
     		0,
-    		new Intent(ctx, MainActivity.class),
+    		new Intent(ctx, on_click_action),
     	    PendingIntent.FLAG_UPDATE_CURRENT
 		);
         
@@ -739,6 +742,7 @@ public class EasyConnect extends Service {
     	// start this service
         Intent intent = new Intent (ctx, EasyConnect.class);
         ctx.getApplicationContext().startService(intent);
+        on_click_action = ctx.getClass();
     }
     
     static public String get_mac_addr () {
