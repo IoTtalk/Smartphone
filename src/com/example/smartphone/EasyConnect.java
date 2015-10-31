@@ -36,7 +36,7 @@ public class EasyConnect extends Service {
 	static private EasyConnect self = null;
 	static private Context creater = null;
 	static private Class on_click_action;
-	static private String log_tag = "EasyConnect";
+	static private String device_model = "EasyConenct";
 	static private String mac_addr_cache = null;
 	
 	static HashSet<Handler> subscribers = null;
@@ -547,7 +547,7 @@ public class EasyConnect extends Service {
         NotificationCompat.Builder notification_builder =
     		new NotificationCompat.Builder(ctx)
 	    	.setSmallIcon(R.drawable.ic_launcher)
-	    	.setContentTitle(C.dm_name)
+	    	.setContentTitle(device_model)
 	    	.setContentText(text)
 	    	.setOngoing(true);
         
@@ -563,7 +563,7 @@ public class EasyConnect extends Service {
     }
 
     static private void logging (String message) {
-        Log.i(log_tag, "[EasyConnect] " + message);
+        Log.i(device_model, "[EasyConnect] " + message);
     }
     
     static private void notify_all_subscribers (Tag tag, String message) {
@@ -736,9 +736,9 @@ public class EasyConnect extends Service {
     // * Public API * //
     // ************** //
     
-    static public void start (Context ctx, String tag) {
+    static public void start (Context ctx, String device_model) {
     	creater = ctx;
-    	log_tag = tag;
+    	EasyConnect.device_model = device_model;
     	// start this service
         Intent intent = new Intent (ctx, EasyConnect.class);
         ctx.getApplicationContext().startService(intent);
