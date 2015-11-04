@@ -294,11 +294,13 @@ public class EasyConnect extends Service {
     	String feature;
     	LinkedBlockingQueue<EasyConnectDataObject> queue;
     	long timestamp;
+    	long min_interval;
     	
     	public UpStreamThread (String feature) {
     		this.feature = feature;
     		this.queue = new LinkedBlockingQueue<EasyConnectDataObject>();
     		this.timestamp = 0;
+        	this.min_interval = 150;
     	}
     	
     	public void stop_working () {
@@ -320,8 +322,8 @@ public class EasyConnect extends Service {
     		while (working_permission) {
     			try {
         			long now = System.currentTimeMillis();
-        			if (now - timestamp < 150) {
-        				Thread.sleep(150 - (now - timestamp));
+        			if (now - timestamp < min_interval) {
+        				Thread.sleep(min_interval - (now - timestamp));
         			}
     				timestamp = System.currentTimeMillis();
     				
