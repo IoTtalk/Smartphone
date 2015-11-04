@@ -15,7 +15,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.app.Activity;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -35,7 +34,7 @@ import android.util.Log;
 public class EasyConnect extends Service {
 	static private EasyConnect self = null;
 	static private Context creater = null;
-	static private Class on_click_action;
+	static private Class<? extends Context> on_click_action;
 	static private String device_model = "EasyConenct";
 	static private String mac_addr_cache = null;
 	
@@ -749,7 +748,7 @@ public class EasyConnect extends Service {
         }
     }
     
-    static public void set_on_click_action (Class c) {
+    static public void set_on_click_action (Class<? extends Context> c) {
     	on_click_action = c;
     }
     
