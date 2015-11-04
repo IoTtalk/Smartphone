@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.HttpURLConnection;
@@ -59,6 +60,7 @@ public class EasyConnect extends Service {
     static         String   EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
     static         String   DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
     static public  int      EC_BROADCAST_PORT = 17000;
+    static private String d_id;
     static private JSONObject profile;
     static private boolean ec_status = false;
 
@@ -347,11 +349,9 @@ public class EasyConnect extends Service {
     				acc.average(buffer_count);
     				
     		        String url;
-    				url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ acc.toString();
+    				url = "http://"+ EC_HOST +"/push/"+ d_id +"/"+ feature +"?data="+ acc.toString();
     				logging("UpStreamThread("+ feature +") push data: "+ acc.toString());
     				http.get(url);
-    			} catch (JSONException e) {
-    				e.printStackTrace();
     			} catch (InterruptedException e) {
 		    		logging("UpStreamThread("+ feature +") interrupted");
 					e.printStackTrace();
@@ -378,11 +378,7 @@ public class EasyConnect extends Service {
     	
     	public DownStreamThread (String feature, Handler callback, int interval) {
     		this.feature = feature;
-    		try {
-				this.url = "http://"+ EC_HOST +"/pull/"+ profile.getString("d_id") +"/"+ feature;
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
+    		this.url = "http://"+ EC_HOST +"/pull/"+ d_id +"/"+ feature;
     		this.subscriber = callback;
     		this.timestamp = 0;
     		this.interval = interval;
@@ -817,8 +813,17 @@ public class EasyConnect extends Service {
     	subscribers.remove(handler);
     }
     
-    static public void attach (JSONObject profile) {
+    static public void attach (String d_id, JSONObject profile) {
+    	EasyConnect.d_id = d_id;
     	EasyConnect.profile = profile;
+    	if (!EasyConnect.profile.has("is_sim")) {
+    		try {
+				EasyConnect.profile.put("is_sim", false);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    	}
+    	
     	RegisterThread.work();
     }
 
@@ -858,33 +863,27 @@ public class EasyConnect extends Service {
     }
 
     static public JSONObject pull_data (String feature) {
-        String url;
-		try {
-			url = "http://"+ EC_HOST +"/pull/"+ profile.getString("d_id") +"/"+ feature;
-	        http.response a = http.get(url);
+		String url = "http://"+ EC_HOST +"/pull/"+ d_id +"/"+ feature;
+        http.response a = http.get(url);
 
-	        if (a.status_code != 200) {
-	            try {
-	                JSONObject ret = new JSONObject();
-	                ret.put("timestamp", "none");
-	                ret.put("data", new JSONArray());
-	                return ret;
-	                
-	            } catch (JSONException e) {
-	                e.printStackTrace();
-	            }
-	            
-	        }
+        if (a.status_code != 200) {
+            try {
+                JSONObject ret = new JSONObject();
+                ret.put("timestamp", "none");
+                ret.put("data", new JSONArray());
+                return ret;
+                
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            
+        }
 
-	        try {
-	            return new JSONObject(a.body);
-	        } catch (JSONException e) {
-	            return new JSONObject();
-	        }
-		} catch (JSONException e1) {
-			e1.printStackTrace();
-		}
-        return new JSONObject();
+        try {
+            return new JSONObject(a.body);
+        } catch (JSONException e) {
+            return new JSONObject();
+        }
     }
 
     static public void detach () {
@@ -902,10 +901,12 @@ public class EasyConnect extends Service {
     // ********************* //
 
     static private boolean attach_api (JSONObject profile) {
-        String url;
 		try {
-			url = "http://"+ EC_HOST +"/create/"+ profile.getString("d_id") +"?profile="+ profile.toString().replace(" ", "");
-	        return http.get(url).status_code == 200;
+	        String url;
+			url = "http://"+ EC_HOST +"/"+ d_id;
+			JSONObject tmp = new JSONObject();
+			tmp.put("profile", profile);
+	        return http.post(url, tmp).status_code == 200;
 		} catch (NullPointerException e) {
 			e.printStackTrace();
 		} catch (JSONException e) {
@@ -917,11 +918,9 @@ public class EasyConnect extends Service {
     static private boolean detach_api () {
         String url;
 		try {
-			url = "http://"+ EC_HOST +"/delete/"+ profile.getString("d_id");
-	        return http.get(url).status_code == 200;
+			url = "http://"+ EC_HOST +"/"+ d_id;
+	        return http.delete(url).status_code == 200;
 		} catch (NullPointerException e) {
-			e.printStackTrace();
-		} catch (JSONException e) {
 			e.printStackTrace();
 		}
 		return false;
@@ -940,14 +939,14 @@ public class EasyConnect extends Service {
     	static public response get (String url_str) {
             try {
     			URL url = new URL(url_str);
-    			HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-                int status_code = urlConnection.getResponseCode();
+    			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+                int status_code = connection.getResponseCode();
             	InputStream in;
                 
                 if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
-                    in = new BufferedInputStream(urlConnection.getErrorStream());
+                    in = new BufferedInputStream(connection.getErrorStream());
                 } else {
-                    in = new BufferedInputStream(urlConnection.getInputStream());
+                    in = new BufferedInputStream(connection.getInputStream());
                 }
                 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(in));
@@ -956,7 +955,7 @@ public class EasyConnect extends Service {
                 while ((line = reader.readLine()) != null) {
                     body += line + "\n";
                 }
-                urlConnection.disconnect();
+                connection.disconnect();
                 reader.close();
                 return new response(body, status_code);
     		} catch (MalformedURLException e) {
@@ -969,6 +968,82 @@ public class EasyConnect extends Service {
             	return new response("IOException", 400);
     		}
         }
+    	
+    	static public response post (String url_str, JSONObject post_body) {
+    		try {
+    			URL url = new URL(url_str);
+    			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+    			connection.setRequestMethod("POST");
+    			connection.setDoOutput(true);	// needed, even if method had been set to POST
+    			connection.setRequestProperty("Content-Type", "application/json");
+    			
+    			OutputStream os = connection.getOutputStream();
+			    os.write(post_body.toString().getBytes());
+    			
+                int status_code = connection.getResponseCode();
+            	InputStream in;
+                
+                if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
+                    in = new BufferedInputStream(connection.getErrorStream());
+                } else {
+                    in = new BufferedInputStream(connection.getInputStream());
+                }
+                
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                String body = "";
+                String line = "";
+                while ((line = reader.readLine()) != null) {
+                    body += line + "\n";
+                }
+                connection.disconnect();
+                reader.close();
+                return new response(body, status_code);
+    		} catch (MalformedURLException e) {
+    			e.printStackTrace();
+    			logging("MalformedURLException");
+            	return new response("MalformedURLException", 400);
+    		} catch (IOException e) {
+    			e.printStackTrace();
+    			logging("IOException");
+            	return new response("IOException", 400);
+    		}
+    	}
+    	
+    	static public response delete (String url_str) {
+    		try {
+    			URL url = new URL(url_str);
+    			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+    			connection.setRequestMethod("DELETE");
+    			connection.setRequestProperty("Content-Type", "application/json");
+    			
+                int status_code = connection.getResponseCode();
+            	InputStream in;
+                
+                if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
+                    in = new BufferedInputStream(connection.getErrorStream());
+                } else {
+                    in = new BufferedInputStream(connection.getInputStream());
+                }
+                
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                String body = "";
+                String line = "";
+                while ((line = reader.readLine()) != null) {
+                    body += line + "\n";
+                }
+                connection.disconnect();
+                reader.close();
+                return new response(body, status_code);
+    		} catch (MalformedURLException e) {
+    			e.printStackTrace();
+    			logging("MalformedURLException");
+            	return new response("MalformedURLException", 400);
+    		} catch (IOException e) {
+    			e.printStackTrace();
+    			logging("IOException");
+            	return new response("IOException", 400);
+    		}
+    	}
     	
         static private void logging (String message) {
             Log.i(device_model, "[EasyConnect.http] " + message);

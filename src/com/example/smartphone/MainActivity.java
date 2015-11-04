@@ -45,17 +45,16 @@ public class MainActivity extends TabActivity {
         
         JSONObject profile = new JSONObject();
         try {
-			profile.put("d_id", EasyConnect.get_d_id());
 	        profile.put("d_name", "Android"+ EasyConnect.get_mac_addr());
 	        profile.put("dm_name", C.dm_name);
 	        JSONArray feature_list = new JSONArray();
 	        for (String f: C.df_list) {
 	        	feature_list.put(f);
 	        }
-	        profile.put("features", feature_list);
+	        profile.put("df_list", feature_list);
 	        profile.put("u_name", C.u_name);
 	        profile.put("monitor", EasyConnect.get_mac_addr());
-	        EasyConnect.attach(profile);
+	        EasyConnect.attach(EasyConnect.get_d_id(), profile);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
