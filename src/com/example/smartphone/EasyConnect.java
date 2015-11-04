@@ -1,11 +1,18 @@
 package com.example.smartphone;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MalformedURLException;
 import java.net.SocketException;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -342,7 +349,7 @@ public class EasyConnect extends Service {
     		        String url;
     				url = "http://"+ EC_HOST +"/push/"+ profile.getString("d_id") +"/"+ feature +"?data="+ acc.toString();
     				logging("UpStreamThread("+ feature +") push data: "+ acc.toString());
-    		        HttpRequest.get(url);
+    				http.get(url);
     			} catch (JSONException e) {
     				e.printStackTrace();
     			} catch (InterruptedException e) {
@@ -397,7 +404,7 @@ public class EasyConnect extends Service {
         				Thread.sleep(interval - (now - timestamp));
         			}
     				timestamp = System.currentTimeMillis();
-			        HttpRequest.HttpResponse a = HttpRequest.get(url);
+			        http.response a = http.get(url);
 			        if (a.status_code == 200) {
 	                	deliver_data(new JSONObject(a.body));
 			        }
@@ -854,7 +861,7 @@ public class EasyConnect extends Service {
         String url;
 		try {
 			url = "http://"+ EC_HOST +"/pull/"+ profile.getString("d_id") +"/"+ feature;
-	        HttpRequest.HttpResponse a = HttpRequest.get(url);
+	        http.response a = http.get(url);
 
 	        if (a.status_code != 200) {
 	            try {
@@ -898,7 +905,7 @@ public class EasyConnect extends Service {
         String url;
 		try {
 			url = "http://"+ EC_HOST +"/create/"+ profile.getString("d_id") +"?profile="+ profile.toString().replace(" ", "");
-	        return HttpRequest.get(url).status_code == 200;
+	        return http.get(url).status_code == 200;
 		} catch (NullPointerException e) {
 			e.printStackTrace();
 		} catch (JSONException e) {
@@ -911,12 +918,60 @@ public class EasyConnect extends Service {
         String url;
 		try {
 			url = "http://"+ EC_HOST +"/delete/"+ profile.getString("d_id");
-	        return HttpRequest.get(url).status_code == 200;
+	        return http.get(url).status_code == 200;
 		} catch (NullPointerException e) {
 			e.printStackTrace();
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
 		return false;
+    }
+    
+    static private class http {
+    	static public class response {
+        	public String body;
+        	public int status_code;
+        	public response (String body, int status_code) {
+                this.body = body;
+                this.status_code = status_code;
+            }
+        }
+    	
+    	static public response get (String url_str) {
+            try {
+    			URL url = new URL(url_str);
+    			HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+                int status_code = urlConnection.getResponseCode();
+            	InputStream in;
+                
+                if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
+                    in = new BufferedInputStream(urlConnection.getErrorStream());
+                } else {
+                    in = new BufferedInputStream(urlConnection.getInputStream());
+                }
+                
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                String body = "";
+                String line = "";
+                while ((line = reader.readLine()) != null) {
+                    body += line + "\n";
+                }
+                urlConnection.disconnect();
+                reader.close();
+                return new response(body, status_code);
+    		} catch (MalformedURLException e) {
+    			e.printStackTrace();
+    			logging("MalformedURLException");
+            	return new response("MalformedURLException", 400);
+    		} catch (IOException e) {
+    			e.printStackTrace();
+    			logging("IOException");
+            	return new response("IOException", 400);
+    		}
+        }
+    	
+        static private void logging (String message) {
+            Log.i(device_model, "[EasyConnect.http] " + message);
+        }  	
     }
 }
