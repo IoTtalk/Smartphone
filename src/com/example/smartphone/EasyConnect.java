@@ -303,12 +303,14 @@ public class EasyConnect extends Service {
     	LinkedBlockingQueue<EasyConnectDataObject> queue;
     	long timestamp;
     	long min_interval;
+        String url;
     	
     	public UpStreamThread (String feature) {
     		this.feature = feature;
     		this.queue = new LinkedBlockingQueue<EasyConnectDataObject>();
     		this.timestamp = 0;
         	this.min_interval = 150;
+    		this.url = "http://"+ EC_HOST +"/"+ d_id +"/"+ feature;
     	}
     	
     	public void stop_working () {
@@ -348,10 +350,9 @@ public class EasyConnect extends Service {
     				}
     				acc.average(buffer_count);
     				
-    		        String url;
-    				url = "http://"+ EC_HOST +"/push/"+ d_id +"/"+ feature +"?data="+ acc.toString();
-    				logging("UpStreamThread("+ feature +") push data: "+ acc.toString());
-    				http.get(url);
+    				String tmp = acc.toString();
+					logging("UpStreamThread("+ feature +") push data: "+ tmp);
+					http.put(url, tmp);
     			} catch (InterruptedException e) {
 		    		logging("UpStreamThread("+ feature +") interrupted");
 					e.printStackTrace();
@@ -659,26 +660,45 @@ public class EasyConnect extends Service {
     		}
     	}
     	
-    	@Override
     	public String toString () {
-    		if (value instanceof Integer || value instanceof Float || value instanceof Double) {
-    			return "["+ value +"]";
-    		} else if (value instanceof int[]) {
-    			return Arrays.toString((int[])value).replace(" ", "");
-    		} else if (value instanceof float[]) {
-    			return Arrays.toString((float[])value).replace(" ", "");
-    		} else if (value instanceof double[]) {
-    			return Arrays.toString((double[])value).replace(" ", "");
-    		} else if (value instanceof byte[]) {
-    			return Arrays.toString((byte[])value).replace(" ", "");
-    		} else if (value instanceof String) {
-    			return "\""+ (String)value +"\"";
-    		} else if (value instanceof JSONArray) {
-    			return ((JSONArray)value).toString().replace(" ", "");
-    		} else if (value instanceof JSONObject) {
-    			return ((JSONObject)value).toString().replace(" ", "");
+    		JSONArray data = new JSONArray();
+    		JSONObject ret = new JSONObject();
+    		try {
+	    		if (value instanceof Integer) {
+	    			data.put((int)value);
+	    		} else if (value instanceof Float || value instanceof Double) {
+	    			data.put((float)value);
+	    		} else if (value instanceof Double) {
+	    			data.put((double)value);
+	    		} else if (value instanceof int[]) {
+	    			for (int i: (int[])value) {
+	    				data.put(i);
+	    			}
+	    		} else if (value instanceof float[]) {
+	    			for (float i: (float[])value) {
+	    				data.put(i);
+	    			}
+	    		} else if (value instanceof double[]) {
+	    			for (double i: (double[])value) {
+	    				data.put(i);
+	    			}
+	    		} else if (value instanceof byte[]) {
+	    			for (byte i: (byte[])value) {
+	    				data.put(i);
+	    			}
+	    		} else if (value instanceof String) {
+	    			return ret.put("data", (String)value).toString();
+	    		} else if (value instanceof JSONArray) {
+	    			data = (JSONArray)value;
+	    		} else if (value instanceof JSONObject) {
+	    			data.put((JSONObject)value);
+	    		}
+	    		ret.put("data", data);
+    		} catch (JSONException e) {
+    			logging("EasyConnectDataObject.toString() JSONException");
+    			e.printStackTrace();
     		}
-    		return "";
+    		return ret.toString();
     	}
     	
     	public void accumulate (EasyConnectDataObject obj) {
@@ -1021,6 +1041,50 @@ public class EasyConnect extends Service {
     			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
     			connection.setRequestMethod("DELETE");
     			connection.setRequestProperty("Content-Type", "application/json");
+    			
+                int status_code = connection.getResponseCode();
+            	InputStream in;
+                
+                if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
+                    in = new BufferedInputStream(connection.getErrorStream());
+                } else {
+                    in = new BufferedInputStream(connection.getInputStream());
+                }
+                
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+                String body = "";
+                String line = "";
+                while ((line = reader.readLine()) != null) {
+                    body += line + "\n";
+                }
+                connection.disconnect();
+                reader.close();
+                return new response(body, status_code);
+    		} catch (MalformedURLException e) {
+    			e.printStackTrace();
+    			logging("MalformedURLException");
+            	return new response("MalformedURLException", 400);
+    		} catch (IOException e) {
+    			e.printStackTrace();
+    			logging("IOException");
+            	return new response("IOException", 400);
+    		}
+    	}
+    	
+    	static public response put (String url_str, JSONObject put_body) {
+    		return put(url_str, put_body.toString());
+    	}
+    	
+    	static public response put (String url_str, String post_body) {
+    		try {
+    			URL url = new URL(url_str);
+    			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+    			connection.setRequestMethod("PUT");
+    			connection.setDoOutput(true);	// needed, even if method had been set to POST
+    			connection.setRequestProperty("Content-Type", "application/json");
+    			
+    			OutputStream os = connection.getOutputStream();
+			    os.write(post_body.getBytes());
     			
                 int status_code = connection.getResponseCode();
             	InputStream in;
