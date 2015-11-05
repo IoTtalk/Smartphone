@@ -378,7 +378,7 @@ public class EasyConnect extends Service {
     	
     	public DownStreamThread (String feature, Handler callback, int interval) {
     		this.feature = feature;
-    		this.url = "http://"+ EC_HOST +"/pull/"+ d_id +"/"+ feature;
+    		this.url = "http://"+ EC_HOST +"/"+ d_id +"/"+ feature;
     		this.subscriber = callback;
     		this.timestamp = 0;
     		this.interval = interval;
@@ -416,17 +416,21 @@ public class EasyConnect extends Service {
     	}
     	
     	private void deliver_data (JSONObject data) throws JSONException {
-    		if (data.getString("timestamp").equals(data_timestamp)) {
+    		DataSet ds = new DataSet(data);
+    		if (ds.timestamp.equals(data_timestamp)) {
+    			// no new data
     			return;
     		}
-    		if (data.getJSONArray("data").length() == 0) {
+    		
+    		if (ds.size() == 0) {
     			// server responded, but the container is empty
     			return;
     		}
-    		if (data.getJSONArray("data").get(0).equals(null)) {
+    		if (ds.newest().data.equals(null)) {
+    			// server responded, but newest data is null
     			return;
     		}
-    		data_timestamp = data.getString("timestamp");
+    		data_timestamp = ds.timestamp;
     		// We got new data
             Message msgObj = subscriber.obtainMessage();
             Bundle bundle = new Bundle();
@@ -440,16 +444,13 @@ public class EasyConnect extends Service {
     static public class DataSet implements Parcelable {
     	public String timestamp;
     	private JSONArray dataset;
-    	private JSONArray dataset_timestamp;
     	
     	public DataSet (Parcel in) {
     		this.timestamp = in.readString();
 			this.dataset = null;
-			this.dataset_timestamp = null;
 			
 			try {
 				this.dataset = new JSONArray(in.readString());
-				this.dataset_timestamp = new JSONArray(in.readString());
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
@@ -458,12 +459,10 @@ public class EasyConnect extends Service {
     	public DataSet (JSONObject in) {
 			this.timestamp = "";
 			this.dataset = null;
-			this.dataset_timestamp = null;
 			
     		try {
-				this.timestamp = in.getString("timestamp");
-				this.dataset = in.getJSONArray("data");
-				this.dataset_timestamp = in.getJSONArray("timestamp_full");
+				this.dataset = in.getJSONArray("samples");
+				this.timestamp = this.dataset.getJSONArray(0).getString(0);
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
@@ -472,12 +471,17 @@ public class EasyConnect extends Service {
     	public Data newest () {
     		Data ret = new Data();
     		try {
-				ret.timestamp = this.dataset_timestamp.getString(0);
-	    		ret.data = this.dataset.get(0);
+    			JSONArray tmp = this.dataset.getJSONArray(0);
+    			ret.timestamp = tmp.getString(0);
+	    		ret.data = tmp.getJSONArray(1);
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
     		return ret;
+    	}
+    	
+    	public int size () {
+    		return this.dataset.length();
     	}
     	
     	@Override
@@ -486,7 +490,6 @@ public class EasyConnect extends Service {
     		try {
 				ret.put("timestamp", this.timestamp);
 	    		ret.put("data", this.dataset);
-	    		ret.put("timestamp_full", this.dataset_timestamp);
 	    		return ret.toString();
 			} catch (JSONException e) {
 				e.printStackTrace();
@@ -503,7 +506,6 @@ public class EasyConnect extends Service {
 		public void writeToParcel(Parcel dest, int flags) {
 			dest.writeString(this.timestamp);
 			dest.writeString(this.dataset.toString());
-			dest.writeString(this.dataset_timestamp.toString());
 		}
 		
 		public static final Parcelable.Creator<DataSet> CREATOR
@@ -520,11 +522,11 @@ public class EasyConnect extends Service {
     
     static public class Data {
     	public String timestamp;
-    	public Object data;
+    	public JSONArray data;
     	
     	public Data () {
     		this.timestamp = "";
-    		this.data = null;
+    		this.data = new JSONArray();
     	}
     }
     
@@ -937,36 +939,40 @@ public class EasyConnect extends Service {
         }
     	
     	static public response get (String url_str) {
-            try {
-    			URL url = new URL(url_str);
-    			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-                int status_code = connection.getResponseCode();
-            	InputStream in;
-                
-                if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
-                    in = new BufferedInputStream(connection.getErrorStream());
-                } else {
-                    in = new BufferedInputStream(connection.getInputStream());
-                }
-                
-                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                String body = "";
-                String line = "";
-                while ((line = reader.readLine()) != null) {
-                    body += line + "\n";
-                }
-                connection.disconnect();
-                reader.close();
-                return new response(body, status_code);
+    		try {
+    		    URL url = new URL(url_str);
+    		    HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+    		    connection.setRequestMethod("GET");
+    		    connection.setRequestProperty("Content-Type", "application/json");
+
+    		    int status_code = connection.getResponseCode();
+    		    InputStream in;
+
+    		    if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
+    		        in = new BufferedInputStream(connection.getErrorStream());
+    		    } else {
+    		        in = new BufferedInputStream(connection.getInputStream());
+    		    }
+
+    		    BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+    		    String body = "";
+    		    String line = "";
+    		    while ((line = reader.readLine()) != null) {
+    		        body += line + "\n";
+    		    }
+    		    connection.disconnect();
+    		    reader.close();
+    		    return new response(body, status_code);
     		} catch (MalformedURLException e) {
-    			e.printStackTrace();
-    			logging("MalformedURLException");
-            	return new response("MalformedURLException", 400);
+    		    e.printStackTrace();
+    		    logging("MalformedURLException");
+    		    return new response("MalformedURLException", 400);
     		} catch (IOException e) {
-    			e.printStackTrace();
-    			logging("IOException");
-            	return new response("IOException", 400);
+    		    e.printStackTrace();
+    		    logging("IOException");
+    		    return new response("IOException", 400);
     		}
+
         }
     	
     	static public response post (String url_str, JSONObject post_body) {
@@ -1043,6 +1049,10 @@ public class EasyConnect extends Service {
     			logging("IOException");
             	return new response("IOException", 400);
     		}
+    	}
+    	
+    	static private response request (String method, String url_str, JSONObject body) {
+    		return null;
     	}
     	
         static private void logging (String message) {
