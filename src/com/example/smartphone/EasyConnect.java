@@ -666,7 +666,7 @@ public class EasyConnect extends Service {
     		try {
 	    		if (value instanceof Integer) {
 	    			data.put((int)value);
-	    		} else if (value instanceof Float || value instanceof Double) {
+	    		} else if (value instanceof Float) {
 	    			data.put((float)value);
 	    		} else if (value instanceof Double) {
 	    			data.put((double)value);
@@ -959,116 +959,15 @@ public class EasyConnect extends Service {
         }
     	
     	static public response get (String url_str) {
-    		try {
-    		    URL url = new URL(url_str);
-    		    HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-    		    connection.setRequestMethod("GET");
-    		    connection.setRequestProperty("Content-Type", "application/json");
-
-    		    int status_code = connection.getResponseCode();
-    		    InputStream in;
-
-    		    if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
-    		        in = new BufferedInputStream(connection.getErrorStream());
-    		    } else {
-    		        in = new BufferedInputStream(connection.getInputStream());
-    		    }
-
-    		    BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-    		    String body = "";
-    		    String line = "";
-    		    while ((line = reader.readLine()) != null) {
-    		        body += line + "\n";
-    		    }
-    		    connection.disconnect();
-    		    reader.close();
-    		    return new response(body, status_code);
-    		} catch (MalformedURLException e) {
-    		    e.printStackTrace();
-    		    logging("MalformedURLException");
-    		    return new response("MalformedURLException", 400);
-    		} catch (IOException e) {
-    		    e.printStackTrace();
-    		    logging("IOException");
-    		    return new response("IOException", 400);
-    		}
-
+    		return request("GET", url_str, null);
         }
     	
     	static public response post (String url_str, JSONObject post_body) {
-    		try {
-    			URL url = new URL(url_str);
-    			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-    			connection.setRequestMethod("POST");
-    			connection.setDoOutput(true);	// needed, even if method had been set to POST
-    			connection.setRequestProperty("Content-Type", "application/json");
-    			
-    			OutputStream os = connection.getOutputStream();
-			    os.write(post_body.toString().getBytes());
-    			
-                int status_code = connection.getResponseCode();
-            	InputStream in;
-                
-                if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
-                    in = new BufferedInputStream(connection.getErrorStream());
-                } else {
-                    in = new BufferedInputStream(connection.getInputStream());
-                }
-                
-                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                String body = "";
-                String line = "";
-                while ((line = reader.readLine()) != null) {
-                    body += line + "\n";
-                }
-                connection.disconnect();
-                reader.close();
-                return new response(body, status_code);
-    		} catch (MalformedURLException e) {
-    			e.printStackTrace();
-    			logging("MalformedURLException");
-            	return new response("MalformedURLException", 400);
-    		} catch (IOException e) {
-    			e.printStackTrace();
-    			logging("IOException");
-            	return new response("IOException", 400);
-    		}
+    		return request("POST", url_str, post_body.toString());
     	}
     	
     	static public response delete (String url_str) {
-    		try {
-    			URL url = new URL(url_str);
-    			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-    			connection.setRequestMethod("DELETE");
-    			connection.setRequestProperty("Content-Type", "application/json");
-    			
-                int status_code = connection.getResponseCode();
-            	InputStream in;
-                
-                if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
-                    in = new BufferedInputStream(connection.getErrorStream());
-                } else {
-                    in = new BufferedInputStream(connection.getInputStream());
-                }
-                
-                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                String body = "";
-                String line = "";
-                while ((line = reader.readLine()) != null) {
-                    body += line + "\n";
-                }
-                connection.disconnect();
-                reader.close();
-                return new response(body, status_code);
-    		} catch (MalformedURLException e) {
-    			e.printStackTrace();
-    			logging("MalformedURLException");
-            	return new response("MalformedURLException", 400);
-    		} catch (IOException e) {
-    			e.printStackTrace();
-    			logging("IOException");
-            	return new response("IOException", 400);
-    		}
+    		return request("DELETE", url_str, null);
     	}
     	
     	static public response put (String url_str, JSONObject put_body) {
@@ -1076,15 +975,22 @@ public class EasyConnect extends Service {
     	}
     	
     	static public response put (String url_str, String post_body) {
+    		return request("PUT", url_str, post_body);
+    	}
+    	
+    	static private response request (String method, String url_str, String request_body) {
     		try {
     			URL url = new URL(url_str);
     			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-    			connection.setRequestMethod("PUT");
-    			connection.setDoOutput(true);	// needed, even if method had been set to POST
-    			connection.setRequestProperty("Content-Type", "application/json");
+    			connection.setRequestMethod(method);
     			
-    			OutputStream os = connection.getOutputStream();
-			    os.write(post_body.getBytes());
+    			if (method.equals("POST") || method.equals("PUT")) {
+	    			connection.setDoOutput(true);	// needed, even if method had been set to POST
+	    			connection.setRequestProperty("Content-Type", "application/json");
+	    			
+	    			OutputStream os = connection.getOutputStream();
+				    os.write(request_body.getBytes());
+    			}
     			
                 int status_code = connection.getResponseCode();
             	InputStream in;
@@ -1113,10 +1019,6 @@ public class EasyConnect extends Service {
     			logging("IOException");
             	return new response("IOException", 400);
     		}
-    	}
-    	
-    	static private response request (String method, String url_str, JSONObject body) {
-    		return null;
     	}
     	
         static private void logging (String message) {
