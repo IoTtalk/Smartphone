@@ -168,6 +168,11 @@ public class EasyConnect extends Service {
     			receive_count = 10;
     		}
     		
+    		if (RegisterThread.is_attaching()) {
+    			logging("Oh, RegisterThread is attach, skip this time to prevent race condition");
+    			return;
+    		}
+    		
         	if (!EC_HOST.equals(candidate_ec_host) && receive_count >= 5) {
         		// we have different ec host, and it's stable
         		boolean reattach_successed = reattach_to(new_ec_host);
@@ -188,10 +193,14 @@ public class EasyConnect extends Service {
     }
     
     static private class RegisterThread extends Thread {
-    	static RegisterThread self;
+    	static private RegisterThread self;
     	private RegisterThread () {}
-    	
     	static boolean working_permission;
+    	static private boolean is_attaching;
+    	
+    	static public boolean is_attaching () {
+    		return is_attaching;
+    	}
     	
     	static public void work () {
     		logging("RegisterThread.work()");
@@ -236,7 +245,9 @@ public class EasyConnect extends Service {
 	            	if (ec_status) {
 	            		break;
 	            	}
+	            	is_attaching = true;
 	            	attach_success = EasyConnect.attach_api(profile);
+	            	is_attaching = false;
 	
 	    			if ( !attach_success ) {
 	    	    		notify_all_subscribers(Tag.ATTACH_FAILED, EC_HOST);
@@ -244,7 +255,7 @@ public class EasyConnect extends Service {
 						Thread.sleep(2000);
 			    		
 	    			} else {
-			    		logging("Attach Successed");
+			    		logging("Attach Successed:" + EC_HOST);
 	            		show_ec_status_on_notification(true);
 	    			}
 	    			
