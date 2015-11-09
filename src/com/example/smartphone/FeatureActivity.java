@@ -26,7 +26,6 @@ public class FeatureActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         
         setContentView(R.layout.activity_features);
-        Log.e(C.log_tag, "create session filter");
 
         final ToggleButton btn_gsensor = (ToggleButton) findViewById(R.id.btn_gsensor);
         btn_gsensor.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {

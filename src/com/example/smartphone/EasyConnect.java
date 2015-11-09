@@ -14,10 +14,10 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.URL;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -56,13 +56,14 @@ public class EasyConnect extends Service {
 	};
 	
 	static private final int NOTIFICATION_ID = 1;
-    static public  int      EC_PORT           = 9999;
-    static         String   EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
-    static         String   DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
-    static public  int      EC_BROADCAST_PORT = 17000;
+    static public  int       EC_PORT           = 9999;
+    static private Semaphore attaching_lock;
+    static         String    EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
+    static         String    DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
+    static public  int       EC_BROADCAST_PORT = 17000;
     static private String d_id;
     static private JSONObject profile;
-    static private boolean ec_status = false;
+    static private boolean   ec_status = false;
 
     static HashMap<String, UpStreamThread> upstream_thread_pool;
     static HashMap<String, DownStreamThread> downstream_thread_pool;
@@ -74,12 +75,10 @@ public class EasyConnect extends Service {
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+    	// TODO: user may call startService directly, or call it multiple times
     	logging("onStartCommand()");
     	self = this;
-    	upstream_thread_pool = new HashMap<String, UpStreamThread>();
-    	downstream_thread_pool = new HashMap<String, DownStreamThread>();
-    	show_ec_status_on_notification(ec_status);
-    	DetectLocalECThread.work();
+    	DetectLocalECThread.start_working();
     	return START_STICKY;
     }
     
@@ -96,8 +95,8 @@ public class EasyConnect extends Service {
     	static String candidate_ec_host = null;
     	static int receive_count = 0;
     	
-    	static public void work () {
-			logging("DetectLocalECThread.work()");
+    	static public void start_working () {
+			logging("DetectLocalECThread.start_working()");
     		if (self != null) {
     			logging("already working");
     			return;
@@ -118,6 +117,7 @@ public class EasyConnect extends Service {
     	
     	public void run () {
 			logging("DetectLocalECThread starts");
+	    	show_ec_status_on_notification(ec_status);
     		try {
 				socket = new DatagramSocket(null);
 				socket.setReuseAddress(true);
@@ -140,6 +140,9 @@ public class EasyConnect extends Service {
 			} catch (IOException e) {
 				logging("IOException");
 				e.printStackTrace();
+			} catch (InterruptedException e) {
+				logging("InterruptedException");
+				e.printStackTrace();
 			} finally {
 				logging("DetectLocalECThread stops");
 	    		working_permission = false;
@@ -147,7 +150,7 @@ public class EasyConnect extends Service {
 			}
     	}
     	
-    	private void process_easyconnect_packet (String _) {
+    	private void process_easyconnect_packet (String _) throws InterruptedException {
         	String new_ec_host = _ +":"+ EasyConnect.EC_PORT;
     		
     		if (EC_HOST.equals(DEFAULT_EC_HOST)) {
@@ -168,14 +171,11 @@ public class EasyConnect extends Service {
     			receive_count = 10;
     		}
     		
-    		if (RegisterThread.is_attaching()) {
-    			logging("Oh, RegisterThread is attach, skip this time to prevent race condition");
-    			return;
-    		}
-    		
         	if (!EC_HOST.equals(candidate_ec_host) && receive_count >= 5) {
-        		// we have different ec host, and it's stable
+        		// we are using different EC host, and it's stable
+        		attaching_lock.acquire();
         		boolean reattach_successed = reattach_to(new_ec_host);
+            	attaching_lock.release();
             	show_ec_status_on_notification(reattach_successed);
         	}
     	}
@@ -202,8 +202,8 @@ public class EasyConnect extends Service {
     		return is_attaching;
     	}
     	
-    	static public void work () {
-    		logging("RegisterThread.work()");
+    	static public void start_working () {
+    		logging("RegisterThread.start_working()");
     		if (ec_status) {
     			logging("already registered");
     	    	show_ec_status_on_notification(ec_status);
@@ -245,9 +245,9 @@ public class EasyConnect extends Service {
 	            	if (ec_status) {
 	            		break;
 	            	}
-	            	is_attaching = true;
+	            	attaching_lock.acquire();
 	            	attach_success = EasyConnect.attach_api(profile);
-	            	is_attaching = false;
+	            	attaching_lock.release();
 	
 	    			if ( !attach_success ) {
 	    	    		notify_all_subscribers(Tag.ATTACH_FAILED, EC_HOST);
@@ -566,8 +566,7 @@ public class EasyConnect extends Service {
     		new NotificationCompat.Builder(ctx)
 	    	.setSmallIcon(R.drawable.ic_launcher)
 	    	.setContentTitle(device_model)
-	    	.setContentText(text)
-	    	.setOngoing(true);
+	    	.setContentText(text);
         
         PendingIntent pending_intent = PendingIntent.getActivity(
         	ctx,
@@ -779,6 +778,9 @@ public class EasyConnect extends Service {
     	// start this service
         Intent intent = new Intent (ctx, EasyConnect.class);
         ctx.getApplicationContext().startService(intent);
+    	upstream_thread_pool = new HashMap<String, UpStreamThread>();
+    	downstream_thread_pool = new HashMap<String, DownStreamThread>();
+        attaching_lock = new Semaphore(1);
         if (on_click_action == null) {
         	on_click_action = ctx.getClass();
         }
@@ -857,7 +859,7 @@ public class EasyConnect extends Service {
 			}
     	}
     	
-    	RegisterThread.work();
+    	RegisterThread.start_working();
     }
 
     static public void push_data (String feature, Object data) {
@@ -935,8 +937,8 @@ public class EasyConnect extends Service {
 
     static private boolean attach_api (JSONObject profile) {
 		try {
-	        String url;
-			url = "http://"+ EC_HOST +"/"+ d_id;
+			logging(d_id +" attaching to "+ EC_HOST);
+	        String url = "http://"+ EC_HOST +"/"+ d_id;
 			JSONObject tmp = new JSONObject();
 			tmp.put("profile", profile);
 	        return http.post(url, tmp).status_code == 200;
@@ -949,9 +951,9 @@ public class EasyConnect extends Service {
     }
 
     static private boolean detach_api () {
-        String url;
 		try {
-			url = "http://"+ EC_HOST +"/"+ d_id;
+			logging(d_id +" detaching from "+ EC_HOST);
+			String url = "http://"+ EC_HOST +"/"+ d_id;
 	        return http.delete(url).status_code == 200;
 		} catch (NullPointerException e) {
 			e.printStackTrace();

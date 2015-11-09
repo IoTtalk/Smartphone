@@ -22,6 +22,7 @@ public class MainActivity extends TabActivity {
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        logging("=============================================");
     	self = this;
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
