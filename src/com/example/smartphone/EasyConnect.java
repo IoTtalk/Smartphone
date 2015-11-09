@@ -78,6 +78,7 @@ public class EasyConnect extends Service {
     	// TODO: user may call startService directly, or call it multiple times
     	logging("onStartCommand()");
     	self = this;
+    	show_ec_status_on_notification(ec_status);
     	return START_STICKY;
     }
     
