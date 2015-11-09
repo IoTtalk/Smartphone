@@ -78,7 +78,6 @@ public class EasyConnect extends Service {
     	// TODO: user may call startService directly, or call it multiple times
     	logging("onStartCommand()");
     	self = this;
-    	DetectLocalECThread.start_working();
     	return START_STICKY;
     }
     
@@ -551,10 +550,6 @@ public class EasyConnect extends Service {
     	if (ec_status) {
         	notify_all_subscribers(Tag.ATTACH_SUCCESS, EC_HOST);
     	}
-    	show_ec_status_on_notification();
-    }
-    
-    static private void show_ec_status_on_notification () {
     	logging("show notification: "+ ec_status);
     	Context ctx = get_reliable_context();
     	if (ctx == null) {
@@ -781,6 +776,7 @@ public class EasyConnect extends Service {
     	upstream_thread_pool = new HashMap<String, UpStreamThread>();
     	downstream_thread_pool = new HashMap<String, DownStreamThread>();
         attaching_lock = new Semaphore(1);
+    	DetectLocalECThread.start_working();
         if (on_click_action == null) {
         	on_click_action = ctx.getClass();
         }
