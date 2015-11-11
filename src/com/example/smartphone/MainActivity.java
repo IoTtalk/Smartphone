@@ -55,7 +55,7 @@ public class MainActivity extends TabActivity {
 	        profile.put("df_list", feature_list);
 	        profile.put("u_name", C.u_name);
 	        profile.put("monitor", EasyConnect.get_mac_addr());
-	        EasyConnect.attach(EasyConnect.get_d_id(), profile);
+	        EasyConnect.attach(EasyConnect.get_d_id(EasyConnect.get_mac_addr()), profile);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}

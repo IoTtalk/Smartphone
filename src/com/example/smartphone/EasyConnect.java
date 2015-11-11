@@ -818,8 +818,8 @@ public class EasyConnect extends Service {
         return mac_addr_cache;
     }
     
-    static public String get_d_id () {
-        return "defema"+ get_mac_addr();
+    static public String get_d_id (String mac_addr) {
+        return "defema"+ mac_addr;
     }
     
     static public String get_d_name () {
