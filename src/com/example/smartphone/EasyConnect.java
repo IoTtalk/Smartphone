@@ -675,11 +675,11 @@ public class EasyConnect extends Service {
     		JSONObject ret = new JSONObject();
     		try {
 	    		if (value instanceof Integer) {
-	    			data.put((int)value);
+	    			data.put((Integer)value);
 	    		} else if (value instanceof Float) {
-	    			data.put((float)value);
+	    			data.put((Float)value);
 	    		} else if (value instanceof Double) {
-	    			data.put((double)value);
+	    			data.put((Double)value);
 	    		} else if (value instanceof int[]) {
 	    			for (int i: (int[])value) {
 	    				data.put(i);
