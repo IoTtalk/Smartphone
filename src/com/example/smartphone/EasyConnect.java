@@ -246,7 +246,11 @@ public class EasyConnect extends Service {
 	            		break;
 	            	}
 	            	attaching_lock.acquire();
+	            	String old_ec_host = EC_HOST;
 	            	attach_success = EasyConnect.attach_api(profile);
+	            	if (!EC_HOST.equals(old_ec_host)) {
+	            		logging("Something fucked up, attaching_lock doesn't successfully protect EC_HOST:"+ old_ec_host +"->"+ EC_HOST);
+	            	}
 	            	attaching_lock.release();
 	
 	    			if ( !attach_success ) {
@@ -321,7 +325,7 @@ public class EasyConnect extends Service {
     		this.queue = new LinkedBlockingQueue<EasyConnectDataObject>();
     		this.timestamp = 0;
         	this.min_interval = 150;
-    		this.url = "http://"+ EC_HOST +"/"+ d_id +"/"+ feature;
+    		this.url = d_id +"/"+ feature;
     	}
     	
     	public void stop_working () {
@@ -363,7 +367,7 @@ public class EasyConnect extends Service {
     				
     				String tmp = acc.toString();
 					logging("UpStreamThread("+ feature +") push data: "+ tmp);
-					http.put(url, tmp);
+					http.put("http://"+ EC_HOST +"/"+ url, tmp);
     			} catch (InterruptedException e) {
 		    		logging("UpStreamThread("+ feature +") interrupted");
 					e.printStackTrace();
@@ -390,7 +394,7 @@ public class EasyConnect extends Service {
     	
     	public DownStreamThread (String feature, Handler callback, int interval) {
     		this.feature = feature;
-    		this.url = "http://"+ EC_HOST +"/"+ d_id +"/"+ feature;
+    		this.url = d_id +"/"+ feature;
     		this.subscriber = callback;
     		this.timestamp = 0;
     		this.interval = interval;
@@ -412,7 +416,7 @@ public class EasyConnect extends Service {
         				Thread.sleep(interval - (now - timestamp));
         			}
     				timestamp = System.currentTimeMillis();
-			        http.response a = http.get(url);
+			        http.response a = http.get("http://"+ EC_HOST +"/"+ url);
 			        if (a.status_code == 200) {
 	                	deliver_data(new JSONObject(a.body));
 			        }
