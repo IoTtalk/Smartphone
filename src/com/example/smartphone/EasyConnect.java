@@ -57,7 +57,8 @@ public class EasyConnect extends Service {
 	
 	static private final int NOTIFICATION_ID = 1;
     static public  int       EC_PORT           = 9999;
-    static private Semaphore attaching_lock;
+    static private Semaphore attach_lock;
+    static private Semaphore ec_status_lock;
     static         String    EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
     static         String    DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
     static public  int       EC_BROADCAST_PORT = 17000;
@@ -173,10 +174,10 @@ public class EasyConnect extends Service {
     		
         	if (!EC_HOST.equals(candidate_ec_host) && receive_count >= 5) {
         		// we are using different EC host, and it's stable
-        		attaching_lock.acquire();
+        		attach_lock.acquire();
         		boolean reattach_successed = reattach_to(new_ec_host);
-            	attaching_lock.release();
             	show_ec_status_on_notification(reattach_successed);
+            	attach_lock.release();
         	}
     	}
         
@@ -196,11 +197,6 @@ public class EasyConnect extends Service {
     	static private RegisterThread self;
     	private RegisterThread () {}
     	static boolean working_permission;
-    	static private boolean is_attaching;
-    	
-    	static public boolean is_attaching () {
-    		return is_attaching;
-    	}
     	
     	static public void start_working () {
     		logging("RegisterThread.start_working()");
@@ -245,24 +241,17 @@ public class EasyConnect extends Service {
 	            	if (ec_status) {
 	            		break;
 	            	}
-	            	attaching_lock.acquire();
-	            	String old_ec_host = EC_HOST;
+	            	attach_lock.acquire();
 	            	attach_success = EasyConnect.attach_api(profile);
-	            	if (!EC_HOST.equals(old_ec_host)) {
-	            		logging("Something fucked up, attaching_lock doesn't successfully protect EC_HOST:"+ old_ec_host +"->"+ EC_HOST);
+            		show_ec_status_on_notification(attach_success);
+	            	attach_lock.release();
+	            	if (attach_success) {
+	            		logging("Attach Successed:" + EC_HOST);
+		            	break;
 	            	}
-	            	attaching_lock.release();
-	
-	    			if ( !attach_success ) {
-	    	    		notify_all_subscribers(Tag.ATTACH_FAILED, EC_HOST);
-			    		logging("Attach failed, wait for 2000ms and try again");
-						Thread.sleep(2000);
-			    		
-	    			} else {
-			    		logging("Attach Successed:" + EC_HOST);
-	            		show_ec_status_on_notification(true);
-	    			}
-	    			
+	    			notify_all_subscribers(Tag.ATTACH_FAILED, EC_HOST);
+		    		logging("Attach failed, wait for 2000ms and try again");
+					Thread.sleep(2000);
 	            }
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -551,32 +540,38 @@ public class EasyConnect extends Service {
     // *************************** //
     
     static private void show_ec_status_on_notification (boolean new_ec_status) {
-    	ec_status = new_ec_status;
-    	if (ec_status) {
-        	notify_all_subscribers(Tag.ATTACH_SUCCESS, EC_HOST);
-    	}
-    	logging("show notification: "+ ec_status);
-    	Context ctx = get_reliable_context();
-    	if (ctx == null) {
-    		return;
-    	}
-    	String text = ec_status ? EasyConnect.EC_HOST : "Connecting";
-        NotificationManager notification_manager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationCompat.Builder notification_builder =
-    		new NotificationCompat.Builder(ctx)
-	    	.setSmallIcon(R.drawable.ic_launcher)
-	    	.setContentTitle(device_model)
-	    	.setContentText(text);
-        
-        PendingIntent pending_intent = PendingIntent.getActivity(
-        	ctx,
-    		0,
-    		new Intent(ctx, on_click_action),
-    	    PendingIntent.FLAG_UPDATE_CURRENT
-		);
-        
-        notification_builder.setContentIntent(pending_intent);
-        notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
+    	try {
+			ec_status_lock.acquire();
+	    	ec_status = new_ec_status;
+	    	if (ec_status) {
+	        	notify_all_subscribers(Tag.ATTACH_SUCCESS, EC_HOST);
+	    	}
+	    	logging("show notification: "+ ec_status);
+	    	Context ctx = get_reliable_context();
+	    	if (ctx == null) {
+	    		return;
+	    	}
+	    	String text = ec_status ? EasyConnect.EC_HOST : "Connecting";
+	    	ec_status_lock.release();
+	        NotificationManager notification_manager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+	        NotificationCompat.Builder notification_builder =
+	    		new NotificationCompat.Builder(ctx)
+		    	.setSmallIcon(R.drawable.ic_launcher)
+		    	.setContentTitle(device_model)
+		    	.setContentText(text);
+	        
+	        PendingIntent pending_intent = PendingIntent.getActivity(
+	        	ctx,
+	    		0,
+	    		new Intent(ctx, on_click_action),
+	    	    PendingIntent.FLAG_UPDATE_CURRENT
+			);
+	        
+	        notification_builder.setContentIntent(pending_intent);
+	        notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
     }
 
     static private void logging (String message) {
@@ -780,7 +775,8 @@ public class EasyConnect extends Service {
         ctx.getApplicationContext().startService(intent);
     	upstream_thread_pool = new HashMap<String, UpStreamThread>();
     	downstream_thread_pool = new HashMap<String, DownStreamThread>();
-        attaching_lock = new Semaphore(1);
+        attach_lock = new Semaphore(1);
+        ec_status_lock = new Semaphore(1);
     	DetectLocalECThread.start_working();
         if (on_click_action == null) {
         	on_click_action = ctx.getClass();
