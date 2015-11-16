@@ -39,7 +39,7 @@
         </activity>
         
 		<service android:name="com.example.smartphone.EasyConnect"></service>
-		<service android:name="com.example.smartphone.GSensorService"></service>
+		<service android:name="com.example.smartphone.AccelerometerService"></service>
 		<service android:name="com.example.smartphone.MicService"></service>
 		<service android:name="com.example.smartphone.SpeakerService"></service>
 		<service android:name="com.example.smartphone.AudioDecideService"></service>

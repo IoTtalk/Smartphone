@@ -10,7 +10,7 @@ public class C {
     static public final int CONNECTED = 6;
     
     static public final String dm_name = "Smartphone";
-    static public final String[] df_list = new String[]{"Display", "G-sensor", "Microphone", "Microphone-raw", "Speaker"};
+    static public final String[] df_list = new String[]{"Display", "Acceleration", "Microphone", "Microphone-raw", "Speaker"};
     static public final String u_name = "yb";
     
     static public final String log_tag = dm_name;

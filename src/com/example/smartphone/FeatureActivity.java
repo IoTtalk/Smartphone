@@ -27,23 +27,23 @@ public class FeatureActivity extends Activity {
         
         setContentView(R.layout.activity_features);
 
-        final ToggleButton btn_gsensor = (ToggleButton) findViewById(R.id.btn_gsensor);
+        final ToggleButton btn_gsensor = (ToggleButton) findViewById(R.id.btn_accelerometer);
         btn_gsensor.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
                     logging("Request GSensorService start");
-                    Intent intent = new Intent (FeatureActivity.this, GSensorService.class);
+                    Intent intent = new Intent (FeatureActivity.this, AccelerometerService.class);
                     getApplicationContext().startService(intent);
                     
                 } else {
                     logging("Request GSensorService stop");
-                    getApplicationContext().stopService(new Intent(FeatureActivity.this, GSensorService.class));
+                    getApplicationContext().stopService(new Intent(FeatureActivity.this, AccelerometerService.class));
                     
                 }
             }
         });
         
-        if ( !GSensorService.is_running() ) {
+        if ( !AccelerometerService.is_running() ) {
         	btn_gsensor.setChecked(false);
             
         } else {
@@ -104,7 +104,7 @@ public class FeatureActivity extends Activity {
             @Override
             public void onClick (View v) {
                 logging("Request GSensorService stop");
-                getApplicationContext().stopService(new Intent(FeatureActivity.this, GSensorService.class));
+                getApplicationContext().stopService(new Intent(FeatureActivity.this, AccelerometerService.class));
                 logging("Request MicService stop");
                 getApplicationContext().stopService(new Intent(FeatureActivity.this, MicService.class));
                 logging("Request SpeakerService stop");
