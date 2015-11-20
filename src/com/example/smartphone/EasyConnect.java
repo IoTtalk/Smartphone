@@ -16,6 +16,7 @@ import java.net.SocketException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
@@ -45,6 +46,7 @@ public class EasyConnect extends Service {
 	static private Class<? extends Context> on_click_action;
 	static private String device_model = "EasyConenct";
 	static private String mac_addr_cache = null;
+	static private String mac_addr_error = "E2202";
 	
 	static HashSet<Handler> subscribers = null;
 	static public enum Tag {
@@ -787,6 +789,13 @@ public class EasyConnect extends Service {
         if (on_click_action == null) {
         	on_click_action = ctx.getClass();
         }
+        
+        // Generate error mac address
+        Random rn = new Random();
+        for (int i = 0; i < 7; i++) {
+            int a = rn.nextInt(16);
+            mac_addr_error += "0123456789ABCDEF".charAt(a);
+        }
     }
     
     static public void set_on_click_action (Class<? extends Context> c) {
@@ -800,24 +809,24 @@ public class EasyConnect extends Service {
     		return mac_addr_cache;
     	}
     	
-    	String error_mac_addr = "E2202E2202";
+    	mac_addr_cache = mac_addr_error;
     	Context ctx = get_reliable_context();
     	
     	if (ctx == null) {
     		logging("Oops, we have no reliable context");
-    		return error_mac_addr;
+    		return mac_addr_cache;
     	}
     	
 		WifiManager wifiMan = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
 		if (wifiMan == null) {
     		logging("Cannot get WiFiManager system service");
-    		return error_mac_addr;
+    		return mac_addr_cache;
 		}
 		
         WifiInfo wifiInf = wifiMan.getConnectionInfo();
         if (wifiInf == null) {
         	logging("Cannot get connection info");
-    		return error_mac_addr;
+    		return mac_addr_cache;
         }
         
         mac_addr_cache = wifiInf.getMacAddress().replace(":", ""); 
