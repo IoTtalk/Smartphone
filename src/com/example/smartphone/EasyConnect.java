@@ -59,8 +59,8 @@ public class EasyConnect extends Service {
     static public  int       EC_PORT           = 9999;
     static private Semaphore attach_lock;
     static private Semaphore ec_status_lock;
-    static         String    EC_HOST           = "openmtc.darkgerm.com:"+ EC_PORT;
-    static         String    DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
+    static final   String    DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
+    static         String    EC_HOST           = DEFAULT_EC_HOST;
     static public  int       EC_BROADCAST_PORT = 17000;
     static private String d_id;
     static private JSONObject profile;
@@ -267,7 +267,7 @@ public class EasyConnect extends Service {
     	static DetachThread self;
     	private DetachThread () {}
     	
-    	static public void work () {
+    	static public void start_working () {
     		if (self != null) {
     			logging("already working");
     	    	show_ec_status_on_notification(ec_status);
@@ -275,6 +275,11 @@ public class EasyConnect extends Service {
     		}
     		self = new DetachThread();
     		self.start();
+    		try {
+				self.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
     	}
     	
     	@Override
@@ -284,16 +289,17 @@ public class EasyConnect extends Service {
             
             ec_status = false;
             boolean detach_result = detach_api();
-    		
-            notify_all_subscribers(Tag.DETACH_SUCCESS, EC_HOST);
+    		logging("Detached from EasyConnect, result: "+ detach_result);
+            if (detach_result) {
+            	notify_all_subscribers(Tag.DETACH_SUCCESS, EC_HOST);
+            }
+            
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
             notification_manager.cancelAll();
-        	
-    		logging("Detached from EasyConnect, result: "+ detach_result);
             
             // reset
         	EC_PORT = 9999;
-        	EC_HOST = "openmtc.darkgerm.com:"+ EC_PORT;
+        	EC_HOST = DEFAULT_EC_HOST;
             EasyConnect.self.getApplicationContext().stopService(new Intent(EasyConnect.self, EasyConnect.class));
             self = null;
     	}
@@ -894,30 +900,6 @@ public class EasyConnect extends Service {
 		}
     }
 
-    static public JSONObject pull_data (String feature) {
-		String url = "http://"+ EC_HOST +"/pull/"+ d_id +"/"+ feature;
-        http.response a = http.get(url);
-
-        if (a.status_code != 200) {
-            try {
-                JSONObject ret = new JSONObject();
-                ret.put("timestamp", "none");
-                ret.put("data", new JSONArray());
-                return ret;
-                
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-            
-        }
-
-        try {
-            return new JSONObject(a.body);
-        } catch (JSONException e) {
-            return new JSONObject();
-        }
-    }
-
     static public void detach () {
 		for (String feature: upstream_thread_pool.keySet()) {
 			upstream_thread_pool.get(feature).stop_working();
@@ -925,7 +907,7 @@ public class EasyConnect extends Service {
 		for (String feature: downstream_thread_pool.keySet()) {
 			downstream_thread_pool.get(feature).stop_working();
 		}
-    	DetachThread.work();
+    	DetachThread.start_working();
     }
     
     // ********************* //

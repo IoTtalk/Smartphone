@@ -66,20 +66,6 @@ public class MainActivity extends TabActivity {
         finish();
     }
     
-    @Override
-    public void onPause () {
-    	super.onPause();
-    	if (isFinishing()) {
-    		MonitorDataThread.work_permission = false;
-    	}
-    }
-    
-//    @Override
-//    public void onDestroy () {
-//        super.onDestroy();
-//		MonitorDataThread.work_permission = false;
-//    }
-    
     static public void logging (String message) {
         Log.i(C.log_tag, "[MainActivity] " + message);
     }
