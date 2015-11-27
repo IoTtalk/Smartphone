@@ -911,12 +911,16 @@ public class EasyConnect extends Service {
     }
 
     static public void detach () {
-		for (String feature: upstream_thread_pool.keySet()) {
-			upstream_thread_pool.get(feature).stop_working();
-		}
-		for (String feature: downstream_thread_pool.keySet()) {
-			downstream_thread_pool.get(feature).stop_working();
-		}
+    	if (upstream_thread_pool != null) {
+			for (String feature: upstream_thread_pool.keySet()) {
+				upstream_thread_pool.get(feature).stop_working();
+			}
+    	}
+    	if (downstream_thread_pool != null) {
+			for (String feature: downstream_thread_pool.keySet()) {
+				downstream_thread_pool.get(feature).stop_working();
+			}
+    	}
     	DetachThread.start_working();
     }
     
