@@ -929,7 +929,13 @@ public class EasyConnect extends Service {
 	        String url = "http://"+ EC_HOST +"/"+ d_id;
 			JSONObject tmp = new JSONObject();
 			tmp.put("profile", profile);
-	        return http.post(url, tmp).status_code == 200;
+			http.response res = http.post(url, tmp);
+			if (res.status_code != 200) {
+				logging("[attach_api] "+ "Response Code: "+ res.status_code);
+				logging("[attach_api] "+ "Response from "+ url);
+				logging("[attach_api] "+ res.body);
+			}
+	        return res.status_code == 200;
 		} catch (NullPointerException e) {
 			e.printStackTrace();
 		} catch (JSONException e) {
