@@ -41,12 +41,13 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
+	static public final String version = "20151127";
 	static private EasyConnect self = null;
 	static private Context creater = null;
 	static private Class<? extends Context> on_click_action;
 	static private String device_model = "EasyConenct";
 	static private String mac_addr_cache = null;
-	static private String mac_addr_error = "E2202";
+	static private String mac_addr_error_prefix = "E2202";
 	
 	static HashSet<Handler> subscribers = null;
 	static public enum Tag {
@@ -794,7 +795,7 @@ public class EasyConnect extends Service {
         Random rn = new Random();
         for (int i = 0; i < 7; i++) {
             int a = rn.nextInt(16);
-            mac_addr_error += "0123456789ABCDEF".charAt(a);
+            mac_addr_error_prefix += "0123456789ABCDEF".charAt(a);
         }
     }
     
@@ -809,7 +810,7 @@ public class EasyConnect extends Service {
     		return mac_addr_cache;
     	}
     	
-    	mac_addr_cache = mac_addr_error;
+    	mac_addr_cache = mac_addr_error_prefix;
     	Context ctx = get_reliable_context();
     	
     	if (ctx == null) {

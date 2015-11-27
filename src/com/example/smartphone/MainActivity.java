@@ -4,19 +4,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.app.NotificationManager;
 import android.app.TabActivity;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Message;
 import android.util.Log;
+import android.view.Menu;
 import android.view.WindowManager;
 import android.widget.TabHost;
 import android.widget.TabHost.TabSpec;
 
 public class MainActivity extends TabActivity {
 	final int NOTIFICATION_ID = 1;
+	static final String version = "20151127";
 	
 	static MainActivity self;
 	
@@ -64,6 +63,16 @@ public class MainActivity extends TabActivity {
     public void end () {
 		EasyConnect.detach();
         finish();
+    }
+    
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        menu.clear();
+        int MENU_ITEM_ID_API_VERSION = 0;
+        int MENU_ITEM_ID_DA_VERSION = 1;
+        menu.add(0, MENU_ITEM_ID_API_VERSION, 0, "API Version: "+ EasyConnect.version);
+        menu.add(0, MENU_ITEM_ID_DA_VERSION, 0, "DA Version: "+ MainActivity.version);
+        return super.onPrepareOptionsMenu(menu);
     }
     
     static public void logging (String message) {
