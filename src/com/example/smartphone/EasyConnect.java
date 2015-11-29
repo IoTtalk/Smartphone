@@ -41,7 +41,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
-	static public final String version = "20151127";
+	static public final String version = "20151129";
 	static private EasyConnect self = null;
 	static private Context creater = null;
 	static private Class<? extends Context> on_click_action;
@@ -309,8 +309,6 @@ public class EasyConnect extends Service {
     }
     
     static private class UpStreamThread extends Thread {
-    	// UpStreamThread cannot be singleton,
-    	// or it may block other threads
     	boolean working_permission;
     	String feature;
     	LinkedBlockingQueue<EasyConnectDataObject> queue;
@@ -341,6 +339,15 @@ public class EasyConnect extends Service {
     	
     	public void run () {
     		logging("UpStreamThread("+ feature +") starts");
+    		try {
+				if (!json_array_has_string(EasyConnect.profile.getJSONArray("df_list"), feature)) {
+					logging("UpStreamThread("+ feature +"): feature not exists, exit");
+					return;
+				}
+			} catch (JSONException e1) {
+				logging("UpStreamThread("+ feature +") checking failed");
+				return;
+			}
     		working_permission = true;
     		while (working_permission) {
     			try {
@@ -382,8 +389,6 @@ public class EasyConnect extends Service {
     }
     
     static private class DownStreamThread extends Thread {
-    	// DownStreamThread cannot be singleton,
-    	// or it may block other threads
     	boolean working_permission;
     	String feature;
     	String url;
@@ -411,6 +416,15 @@ public class EasyConnect extends Service {
     	
     	public void run () {
     		logging("DownStreamThread("+ feature +") starts");
+    		try {
+				if (!json_array_has_string(EasyConnect.profile.getJSONArray("df_list"), feature)) {
+					logging("DownStreamThread("+ feature +"): feature not exists, exit");
+					return;
+				}
+			} catch (JSONException e1) {
+				logging("DownStreamThread("+ feature +") checking failed");
+				return;
+			}
     		working_permission = true;
     		data_timestamp = "";
     		while (working_permission) {
@@ -558,6 +572,19 @@ public class EasyConnect extends Service {
     // *************************** //
     // * Internal Used Functions * //
     // *************************** //
+    
+    static private boolean json_array_has_string (JSONArray json_array, String str) {
+    	for (int i = 0; i < json_array.length(); i++) {
+    		try {
+				if (json_array.getString(i).equals(str)) {
+					return true;
+				}
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    	}
+    	return false;
+    }
     
     static private void show_ec_status_on_notification (boolean new_ec_status) {
     	try {
