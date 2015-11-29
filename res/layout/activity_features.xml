@@ -32,10 +32,10 @@
     </LinearLayout>
     
     <ToggleButton
-        android:id="@+id/btn_gsensor"
+        android:id="@+id/btn_accelerometer"
 		style="@style/thin_small_toggle_button"
-		android:textOn="G-sensor working"
-		android:textOff="G-sensor idle"/>
+		android:textOn="Accelerometer working"
+		android:textOff="Accelerometer idle"/>
     
     <ToggleButton
         android:id="@+id/btn_mic"

@@ -38,15 +38,6 @@ public class MonitorDeviceListActivity extends Activity {
     JSONObject meta_index;
     JSONArray  view_index;
     int timestep;
-    
-	private Handler message_handler = new Handler() {
-	    public void handleMessage (Message msg) {
-	    	// Do a reference of newest raw data, because the raw data will keep updating
-	    	newest_raw_data_copy = MonitorDataThread.newest_raw_data;
-	    	update_index();
-	    	
-	    }
-	};
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -137,7 +128,6 @@ public class MonitorDeviceListActivity extends Activity {
 	public void onDestroy () {
 		super.onDestroy();
     	EasyConnect.unsubscribe("Display");
-		MonitorDataThread.set_device_list_handler(null);
 	}
 	
 	public void update_index () {

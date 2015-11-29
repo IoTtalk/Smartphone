@@ -18,7 +18,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
-public class GSensorService extends Service implements SensorEventListener {
+public class AccelerometerService extends Service implements SensorEventListener {
     static final int SENSOR_TYPE = Sensor.TYPE_ACCELEROMETER;
     private SensorManager mSensorManager;
     private Sensor mSensor;
@@ -29,12 +29,12 @@ public class GSensorService extends Service implements SensorEventListener {
     
     private final IBinder mBinder = new MyBinder();
     public class MyBinder extends Binder {
-        GSensorService getService() {
-            return GSensorService.this;
+        AccelerometerService getService() {
+            return AccelerometerService.this;
         }
     }
     
-    public GSensorService () {
+    public AccelerometerService () {
         running = true;
         working = false;
         logging("constructor");
@@ -62,9 +62,9 @@ public class GSensorService extends Service implements SensorEventListener {
             mSensor = mSensorManager.getDefaultSensor(SENSOR_TYPE);
             if ( mSensor != null ) {
                 mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_GAME);
-                logging("g-sensor available");
+                logging("Acceleration available");
             } else {
-                logging("g-sensor not available");
+                logging("Acceleration not available");
                 return Service.START_NOT_STICKY;
             }
         	working = true;
@@ -93,7 +93,7 @@ public class GSensorService extends Service implements SensorEventListener {
             data.put(data_x);
             data.put(data_y);
             data.put(data_z);
-            EasyConnect.push_data("G-sensor", data);
+            EasyConnect.push_data("Acceleration", data);
             logging(String.format("push_data(%.10f, %.10f, %.10f)", data_x, data_y, data_z));
         } catch (JSONException e) {
             e.printStackTrace();

@@ -4,24 +4,24 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.app.NotificationManager;
 import android.app.TabActivity;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Message;
 import android.util.Log;
+import android.view.Menu;
 import android.view.WindowManager;
 import android.widget.TabHost;
 import android.widget.TabHost.TabSpec;
 
 public class MainActivity extends TabActivity {
 	final int NOTIFICATION_ID = 1;
+	static final String version = "20151127";
 	
 	static MainActivity self;
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        logging("=============================================");
     	self = this;
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -45,17 +45,16 @@ public class MainActivity extends TabActivity {
         
         JSONObject profile = new JSONObject();
         try {
-			profile.put("d_id", EasyConnect.get_d_id());
 	        profile.put("d_name", "Android"+ EasyConnect.get_mac_addr());
 	        profile.put("dm_name", C.dm_name);
 	        JSONArray feature_list = new JSONArray();
 	        for (String f: C.df_list) {
 	        	feature_list.put(f);
 	        }
-	        profile.put("features", feature_list);
+	        profile.put("df_list", feature_list);
 	        profile.put("u_name", C.u_name);
 	        profile.put("monitor", EasyConnect.get_mac_addr());
-	        EasyConnect.attach(profile);
+	        EasyConnect.attach(EasyConnect.get_d_id(EasyConnect.get_mac_addr()), profile);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
@@ -67,18 +66,14 @@ public class MainActivity extends TabActivity {
     }
     
     @Override
-    public void onPause () {
-    	super.onPause();
-    	if (isFinishing()) {
-    		MonitorDataThread.work_permission = false;
-    	}
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        menu.clear();
+        int MENU_ITEM_ID_API_VERSION = 0;
+        int MENU_ITEM_ID_DA_VERSION = 1;
+        menu.add(0, MENU_ITEM_ID_API_VERSION, 0, "API Version: "+ EasyConnect.version);
+        menu.add(0, MENU_ITEM_ID_DA_VERSION, 0, "DA Version: "+ MainActivity.version);
+        return super.onPrepareOptionsMenu(menu);
     }
-    
-//    @Override
-//    public void onDestroy () {
-//        super.onDestroy();
-//		MonitorDataThread.work_permission = false;
-//    }
     
     static public void logging (String message) {
         Log.i(C.log_tag, "[MainActivity] " + message);
