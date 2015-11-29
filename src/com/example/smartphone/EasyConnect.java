@@ -61,12 +61,12 @@ public class EasyConnect extends Service {
 	static private final int NOTIFICATION_ID = 1;
     static public  int       EC_PORT           = 9999;
     static private Semaphore attach_lock;
-    static private Semaphore ec_status_lock;
     static final   String    DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
     static         String    EC_HOST           = DEFAULT_EC_HOST;
     static public  int       EC_BROADCAST_PORT = 17000;
     static private String d_id;
     static private JSONObject profile;
+    static private Semaphore ec_status_lock;
     static private boolean   ec_status = false;
 
     static HashMap<String, UpStreamThread> upstream_thread_pool;
@@ -352,7 +352,9 @@ public class EasyConnect extends Service {
     				
 					EasyConnectDataObject acc = queue.take();
     				int buffer_count = 1;
-    				while (!queue.isEmpty()) {
+    				int queue_len = queue.size();
+    				for (int i = 0; i < queue_len; i++) {
+//    				while (!queue.isEmpty()) {	// This may cause starvation
     					EasyConnectDataObject tmp = queue.take();
     					if (!working_permission) {
         		    		logging("UpStreamThread("+ feature +") droped");
@@ -364,8 +366,12 @@ public class EasyConnect extends Service {
     				acc.average(buffer_count);
     				
     				String tmp = acc.toString();
-					logging("UpStreamThread("+ feature +") push data: "+ tmp);
-					http.put("http://"+ EC_HOST +"/"+ url, tmp);
+    				if (ec_status) {
+						logging("UpStreamThread("+ feature +") push data: "+ tmp);
+						http.put("http://"+ EC_HOST +"/"+ url, tmp);
+    				} else {
+						logging("UpStreamThread("+ feature +") skip. (ec_status == false)");
+    				}
     			} catch (InterruptedException e) {
 		    		logging("UpStreamThread("+ feature +") interrupted");
 					e.printStackTrace();
@@ -414,10 +420,15 @@ public class EasyConnect extends Service {
         				Thread.sleep(interval - (now - timestamp));
         			}
     				timestamp = System.currentTimeMillis();
-			        http.response a = http.get("http://"+ EC_HOST +"/"+ url);
-			        if (a.status_code == 200) {
-	                	deliver_data(new JSONObject(a.body));
-			        }
+    				if (ec_status) {
+				        http.response res = http.get("http://"+ EC_HOST +"/"+ url);
+    					logging("DownStreamThread("+ feature +") pull data: "+ res.status_code);
+				        if (res.status_code == 200) {
+		                	deliver_data(new JSONObject(res.body));
+				        }
+    				} else {
+    					logging("DownStreamThread("+ feature +") skip. (ec_status == false)");
+    				}
 	            } catch (JSONException e) {
 		    		logging("DownStreamThread("+ feature +") JSONException");
 	                e.printStackTrace();
