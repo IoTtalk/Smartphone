@@ -41,8 +41,9 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
-	static public final String version = "20151129";
+	static public final String version = "20151130";
 	static private EasyConnect self = null;
+	static private boolean ec_service_started;
 	static private Context creater = null;
 	static private Class<? extends Context> on_click_action;
 	static private String device_model = "EasyConenct";
@@ -69,6 +70,7 @@ public class EasyConnect extends Service {
     static private Semaphore ec_status_lock;
     static private boolean   ec_status = false;
 
+    static private long request_interval = 150;
     static HashMap<String, UpStreamThread> upstream_thread_pool;
     static HashMap<String, DownStreamThread> downstream_thread_pool;
     
@@ -79,7 +81,6 @@ public class EasyConnect extends Service {
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-    	// TODO: user may call startService directly, or call it multiple times
     	logging("onStartCommand()");
     	self = this;
     	show_ec_status_on_notification(ec_status);
@@ -300,12 +301,17 @@ public class EasyConnect extends Service {
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
             notification_manager.cancelAll();
             
-            // reset
-        	EC_PORT = 9999;
-        	EC_HOST = DEFAULT_EC_HOST;
-            EasyConnect.self.getApplicationContext().stopService(new Intent(EasyConnect.self, EasyConnect.class));
-            self = null;
+            EasyConnect.self.stopSelf();
+            reset();
     	}
+    }
+    
+    static private void reset () {
+    	EC_PORT = 9999;
+    	EC_HOST = DEFAULT_EC_HOST;
+        self = null;
+        EasyConnect.request_interval = 150;
+    	ec_service_started = false;
     }
     
     static private class UpStreamThread extends Thread {
@@ -313,14 +319,12 @@ public class EasyConnect extends Service {
     	String feature;
     	LinkedBlockingQueue<EasyConnectDataObject> queue;
     	long timestamp;
-    	long min_interval;
         String url;
     	
     	public UpStreamThread (String feature) {
     		this.feature = feature;
     		this.queue = new LinkedBlockingQueue<EasyConnectDataObject>();
     		this.timestamp = 0;
-        	this.min_interval = 150;
     		this.url = d_id +"/"+ feature;
     	}
     	
@@ -352,8 +356,8 @@ public class EasyConnect extends Service {
     		while (working_permission) {
     			try {
         			long now = System.currentTimeMillis();
-        			if (now - timestamp < min_interval) {
-        				Thread.sleep(min_interval - (now - timestamp));
+        			if (now - timestamp < request_interval) {
+        				Thread.sleep(request_interval - (now - timestamp));
         			}
     				timestamp = System.currentTimeMillis();
     				
@@ -395,18 +399,12 @@ public class EasyConnect extends Service {
     	Handler subscriber;
     	long timestamp;
     	String data_timestamp;
-    	int interval;
     	
     	public DownStreamThread (String feature, Handler callback) {
-    		this(feature, callback, 150);
-    	}
-    	
-    	public DownStreamThread (String feature, Handler callback, int interval) {
     		this.feature = feature;
     		this.url = d_id +"/"+ feature;
     		this.subscriber = callback;
     		this.timestamp = 0;
-    		this.interval = interval;
     	}
     	
     	public void stop_working () {
@@ -430,8 +428,8 @@ public class EasyConnect extends Service {
     		while (working_permission) {
     			try {
         			long now = System.currentTimeMillis();
-        			if (now - timestamp < interval) {
-        				Thread.sleep(interval - (now - timestamp));
+        			if (now - timestamp < request_interval) {
+        				Thread.sleep(request_interval - (now - timestamp));
         			}
     				timestamp = System.currentTimeMillis();
     				if (ec_status) {
@@ -813,12 +811,17 @@ public class EasyConnect extends Service {
     // ************** //
     // * Public API * //
     // ************** //
-    
     static public void start (Context ctx, String device_model) {
+    	if (ec_service_started) {
+    		logging("EasyConnect.start(): already started");
+    		return;
+    	}
+		logging("EasyConnect.start()");
+    	ec_service_started = true;
     	creater = ctx;
     	EasyConnect.device_model = device_model;
     	// start this service
-        Intent intent = new Intent (ctx, EasyConnect.class);
+        Intent intent = new Intent(ctx, EasyConnect.class);
         ctx.getApplicationContext().startService(intent);
     	upstream_thread_pool = new HashMap<String, UpStreamThread>();
     	downstream_thread_pool = new HashMap<String, DownStreamThread>();
@@ -929,12 +932,8 @@ public class EasyConnect extends Service {
     }
     
     static public void subscribe (String feature, Handler callback) {
-    	subscribe(feature, callback, 150);
-    }
-    
-    static public void subscribe (String feature, Handler callback, int interval) {
     	if (!downstream_thread_pool.containsKey(feature)) {
-    		DownStreamThread dst = new DownStreamThread(feature, callback, interval);
+    		DownStreamThread dst = new DownStreamThread(feature, callback);
     		downstream_thread_pool.put(feature, dst);
     		dst.start();
     	}
@@ -960,6 +959,17 @@ public class EasyConnect extends Service {
 			}
     	}
     	DetachThread.start_working();
+    }
+    
+    static public long get_request_interval () {
+		return EasyConnect.request_interval;
+    }
+    
+    static public void set_request_interval (long request_interval) {
+    	if (request_interval > 0) {
+    		logging("Set EasyConnect.request_interval = "+ request_interval);
+            EasyConnect.request_interval = request_interval;
+    	}
     }
     
     // ********************* //

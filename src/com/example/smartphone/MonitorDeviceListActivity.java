@@ -112,7 +112,7 @@ public class MonitorDeviceListActivity extends Activity {
 				}
     	    }
     	};
-    	EasyConnect.subscribe("Display", handler, 500);
+    	EasyConnect.subscribe("Display", handler);
 	}
 	
 	@Override
