@@ -41,7 +41,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
-	static public final String version = "20151130";
+	static public final String version = "20151201a";
 	static private EasyConnect self = null;
 	static private boolean ec_service_started;
 	static private Context creater = null;
@@ -876,7 +876,7 @@ public class EasyConnect extends Service {
     }
     
     static public String get_d_id (String mac_addr) {
-        return "defema"+ mac_addr;
+        return mac_addr;
     }
     
     static public String get_d_name () {

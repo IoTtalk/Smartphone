@@ -108,7 +108,7 @@ public class MicService extends Service {
 	                	ary.put(buffer[i]);
 	                }
 	                data.put("data", ary);
-	                EasyConnect.push_data("Microphone-raw", data);
+	                EasyConnect.push_data("Raw-mic", data);
 	                
 	                int v = 0;
 	                for (int i = 0; i < buffer.length; i++) {
