@@ -41,7 +41,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
-	static public final String version = "20151201a";
+	static public final String version = "20151203a";
 	static private EasyConnect self = null;
 	static private boolean ec_service_started;
 	static private Context creater = null;
@@ -301,7 +301,9 @@ public class EasyConnect extends Service {
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
             notification_manager.cancelAll();
             
-            EasyConnect.self.stopSelf();
+            if (EasyConnect.self != null) {
+            	EasyConnect.self.stopSelf();
+            }
             reset();
     	}
     }
