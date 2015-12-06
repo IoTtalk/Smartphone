@@ -41,7 +41,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
-	static public final String version = "20151205a";
+	static public final String version = "20151207a";
 	static private EasyConnect self = null;
 	static private boolean ec_service_started;
 	static private Context creater = null;
@@ -179,22 +179,17 @@ public class EasyConnect extends Service {
         	if (!EC_HOST.equals(candidate_ec_host) && receive_count >= 5) {
         		// we are using different EC host, and it's stable
         		attach_lock.acquire();
-        		boolean reattach_successed = reattach_to(new_ec_host);
-            	show_ec_status_on_notification(reattach_successed);
+            	if (!ec_status) {
+                	EC_HOST = new_ec_host;
+            	} else {
+            		detach_api();
+            		ec_status = false;
+            	}
+            	EC_HOST = new_ec_host;
             	attach_lock.release();
+            	RegisterThread.start_working();
         	}
     	}
-        
-        static private boolean reattach_to (String new_host) {
-        	if (!ec_status) {
-            	EC_HOST = new_host;
-        		return false;
-        	}
-    		detach_api();
-        	EC_HOST = new_host;
-        	logging("Reattach to "+ new_host);
-        	return attach_api(profile);
-        }
     }
     
     static private class RegisterThread extends Thread {
@@ -250,7 +245,7 @@ public class EasyConnect extends Service {
             		show_ec_status_on_notification(attach_success);
 	            	attach_lock.release();
 	            	if (attach_success) {
-	            		logging("Attach Successed:" + EC_HOST);
+	            		logging("Attach Successed: " + EC_HOST);
 		            	break;
 	            	}
 	    			notify_all_subscribers(Tag.ATTACH_FAILED, EC_HOST);
