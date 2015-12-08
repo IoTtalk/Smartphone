@@ -299,16 +299,18 @@ public class EasyConnect extends Service {
             if (EasyConnect.self != null) {
             	EasyConnect.self.stopSelf();
             }
+            
+            self = null;
             reset();
     	}
     }
     
     static private void reset () {
-    	EC_PORT = 9999;
-    	EC_HOST = DEFAULT_EC_HOST;
-        self = null;
+    	EasyConnect.EC_PORT = 9999;
+    	EasyConnect.EC_HOST = DEFAULT_EC_HOST;
+    	EasyConnect.self = null;
         EasyConnect.request_interval = 150;
-    	ec_service_started = false;
+        EasyConnect.ec_service_started = false;
     }
     
     static private class UpStreamThread extends Thread {
