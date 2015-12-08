@@ -41,7 +41,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
-	static public final String version = "20151207a";
+	static public final String version = "20151208b";
 	static private EasyConnect self = null;
 	static private boolean ec_service_started;
 	static private Context creater = null;
@@ -234,6 +234,9 @@ public class EasyConnect extends Service {
 				notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
 			} catch (JSONException e1) {
 				e1.printStackTrace();
+			} catch (NullPointerException e2) {
+                logging("[RegisterThread] profile is null, try to work on");
+                e2.printStackTrace();
 			}
     		try {
 	            while ( working_permission && !attach_success ) {
@@ -589,6 +592,10 @@ public class EasyConnect extends Service {
 	    	ec_status = new_ec_status;
 	    	if (ec_status) {
 	        	notify_all_subscribers(Tag.ATTACH_SUCCESS, EC_HOST);
+                try {
+                    notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
+                } catch (JSONException e) {
+                }
 	    	}
 	    	logging("show notification: "+ ec_status);
 	    	Context ctx = get_reliable_context();
