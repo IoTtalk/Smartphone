@@ -41,7 +41,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class EasyConnect extends Service {
-	static public final String version = "20151208b";
+	static public final String version = "20151217a";
 	static private EasyConnect self = null;
 	static private boolean ec_service_started;
 	static private Context creater = null;
@@ -60,10 +60,8 @@ public class EasyConnect extends Service {
 	};
 	
 	static private final int NOTIFICATION_ID = 1;
-    static public  int       EC_PORT           = 9999;
     static private Semaphore attach_lock;
-    static final   String    DEFAULT_EC_HOST   = "openmtc.darkgerm.com:"+ EC_PORT;
-    static         String    EC_HOST           = DEFAULT_EC_HOST;
+    static final   String    DEFAULT_EC_HOST   = "http://openmtc.darkgerm.com:9999";
     static public  int       EC_BROADCAST_PORT = 17000;
     static private String d_id;
     static private JSONObject profile;
@@ -156,9 +154,9 @@ public class EasyConnect extends Service {
     	}
     	
     	private void process_easyconnect_packet (String _) throws InterruptedException {
-        	String new_ec_host = _ +":"+ EasyConnect.EC_PORT;
+        	String new_ec_host = "http://" + _ +":9999";
     		
-    		if (EC_HOST.equals(DEFAULT_EC_HOST)) {
+    		if (csmapi.ENDPOINT.equals(DEFAULT_EC_HOST)) {
     			// we are now on default EC, and we should use local EC first
     			candidate_ec_host = new_ec_host;
     			receive_count = 10;
@@ -176,18 +174,18 @@ public class EasyConnect extends Service {
     			receive_count = 10;
     		}
     		
-        	if (!EC_HOST.equals(candidate_ec_host) && receive_count >= 5) {
+        	if (!csmapi.ENDPOINT.equals(candidate_ec_host) && receive_count >= 5) {
         		// we are using different EC host, and it's stable
         		attach_lock.acquire();
             	if (!ec_status) {
-                	EC_HOST = new_ec_host;
+            		csmapi.ENDPOINT = new_ec_host;
             	} else {
-            		detach_api();
+            		csmapi.delete(d_id);
             		ec_status = false;
+                	csmapi.ENDPOINT = new_ec_host;
+                	RegisterThread.start_working();
             	}
-            	EC_HOST = new_ec_host;
             	attach_lock.release();
-            	RegisterThread.start_working();
         	}
     	}
     }
@@ -228,7 +226,7 @@ public class EasyConnect extends Service {
         public void run () {
     		logging("RegisterThread starts");
     		boolean attach_success = false;
-    		notify_all_subscribers(Tag.ATTACH_TRYING, EC_HOST);
+    		notify_all_subscribers(Tag.ATTACH_TRYING, csmapi.ENDPOINT);
     		
         	try {
 				notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
@@ -244,14 +242,14 @@ public class EasyConnect extends Service {
 	            		break;
 	            	}
 	            	attach_lock.acquire();
-	            	attach_success = EasyConnect.attach_api(profile);
+	            	attach_success = csmapi.create(d_id, profile);
             		show_ec_status_on_notification(attach_success);
+            		logging("Attach result: " + csmapi.ENDPOINT +": "+ attach_success);
 	            	attach_lock.release();
 	            	if (attach_success) {
-	            		logging("Attach Successed: " + EC_HOST);
 		            	break;
 	            	}
-	    			notify_all_subscribers(Tag.ATTACH_FAILED, EC_HOST);
+	    			notify_all_subscribers(Tag.ATTACH_FAILED, csmapi.ENDPOINT);
 		    		logging("Attach failed, wait for 2000ms and try again");
 					Thread.sleep(2000);
 	            }
@@ -290,10 +288,10 @@ public class EasyConnect extends Service {
             RegisterThread.stop_working();
             
             ec_status = false;
-            boolean detach_result = detach_api();
+            boolean detach_result = csmapi.delete(d_id);
     		logging("Detached from EasyConnect, result: "+ detach_result);
             if (detach_result) {
-            	notify_all_subscribers(Tag.DETACH_SUCCESS, EC_HOST);
+            	notify_all_subscribers(Tag.DETACH_SUCCESS, csmapi.ENDPOINT);
             }
             
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
@@ -309,8 +307,7 @@ public class EasyConnect extends Service {
     }
     
     static private void reset () {
-    	EasyConnect.EC_PORT = 9999;
-    	EasyConnect.EC_HOST = DEFAULT_EC_HOST;
+    	csmapi.ENDPOINT = DEFAULT_EC_HOST;
     	EasyConnect.self = null;
         EasyConnect.request_interval = 150;
         EasyConnect.ec_service_started = false;
@@ -321,13 +318,11 @@ public class EasyConnect extends Service {
     	String feature;
     	LinkedBlockingQueue<EasyConnectDataObject> queue;
     	long timestamp;
-        String url;
     	
     	public UpStreamThread (String feature) {
     		this.feature = feature;
     		this.queue = new LinkedBlockingQueue<EasyConnectDataObject>();
     		this.timestamp = 0;
-    		this.url = d_id +"/"+ feature;
     	}
     	
     	public void stop_working () {
@@ -378,10 +373,10 @@ public class EasyConnect extends Service {
     				}
     				acc.average(buffer_count);
     				
-    				String tmp = acc.toString();
+    				JSONObject data = acc.toJSONObject();
     				if (ec_status) {
-						logging("UpStreamThread("+ feature +") push data: "+ tmp);
-						http.put("http://"+ EC_HOST +"/"+ url, tmp);
+						logging("UpStreamThread("+ feature +") push data: "+ data);
+						csmapi.push(d_id, feature, data);
     				} else {
 						logging("UpStreamThread("+ feature +") skip. (ec_status == false)");
     				}
@@ -397,14 +392,12 @@ public class EasyConnect extends Service {
     static private class DownStreamThread extends Thread {
     	boolean working_permission;
     	String feature;
-    	String url;
     	Handler subscriber;
     	long timestamp;
     	String data_timestamp;
     	
     	public DownStreamThread (String feature, Handler callback) {
     		this.feature = feature;
-    		this.url = d_id +"/"+ feature;
     		this.subscriber = callback;
     		this.timestamp = 0;
     	}
@@ -435,11 +428,8 @@ public class EasyConnect extends Service {
         			}
     				timestamp = System.currentTimeMillis();
     				if (ec_status) {
-				        http.response res = http.get("http://"+ EC_HOST +"/"+ url);
-    					logging("DownStreamThread("+ feature +") pull data: "+ res.status_code);
-				        if (res.status_code == 200) {
-		                	deliver_data(new JSONObject(res.body));
-				        }
+    					logging("DownStreamThread("+ feature +") pull data");
+	                	deliver_data(csmapi.pull(d_id, feature));
     				} else {
     					logging("DownStreamThread("+ feature +") skip. (ec_status == false)");
     				}
@@ -454,7 +444,7 @@ public class EasyConnect extends Service {
     		logging("DownStreamThread("+ feature +") stops");
     	}
     	
-    	private void deliver_data (JSONObject data) throws JSONException {
+    	private void deliver_data (JSONArray data) throws JSONException {
     		DataSet ds = new DataSet(data);
     		if (ds.timestamp.equals(data_timestamp)) {
     			// no new data
@@ -495,12 +485,12 @@ public class EasyConnect extends Service {
 			}
     	}
     	
-    	public DataSet (JSONObject in) {
+    	public DataSet (JSONArray in) {
 			this.timestamp = "";
 			this.dataset = null;
 			
     		try {
-				this.dataset = in.getJSONArray("samples");
+				this.dataset = in;
 				this.timestamp = this.dataset.getJSONArray(0).getString(0);
 			} catch (JSONException e) {
 				e.printStackTrace();
@@ -591,7 +581,7 @@ public class EasyConnect extends Service {
 			ec_status_lock.acquire();
 	    	ec_status = new_ec_status;
 	    	if (ec_status) {
-	        	notify_all_subscribers(Tag.ATTACH_SUCCESS, EC_HOST);
+	        	notify_all_subscribers(Tag.ATTACH_SUCCESS, csmapi.ENDPOINT);
                 try {
                     notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
                 } catch (JSONException e) {
@@ -602,7 +592,7 @@ public class EasyConnect extends Service {
 	    	if (ctx == null) {
 	    		return;
 	    	}
-	    	String text = ec_status ? EasyConnect.EC_HOST : "Connecting";
+	    	String text = ec_status ? csmapi.ENDPOINT : "Connecting";
 	    	ec_status_lock.release();
 	        NotificationManager notification_manager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
 	        NotificationCompat.Builder notification_builder =
@@ -716,7 +706,7 @@ public class EasyConnect extends Service {
     		}
     	}
     	
-    	public String toString () {
+    	public JSONObject toJSONObject () {
     		JSONArray data = new JSONArray();
     		JSONObject ret = new JSONObject();
     		try {
@@ -743,7 +733,7 @@ public class EasyConnect extends Service {
 	    				data.put(i);
 	    			}
 	    		} else if (value instanceof String) {
-	    			return ret.put("data", (String)value).toString();
+	    			return ret.put("data", (String)value);
 	    		} else if (value instanceof JSONArray) {
 	    			data = (JSONArray)value;
 	    		} else if (value instanceof JSONObject) {
@@ -754,7 +744,7 @@ public class EasyConnect extends Service {
     			logging("EasyConnectDataObject.toString() JSONException");
     			e.printStackTrace();
     		}
-    		return ret.toString();
+    		return ret;
     	}
     	
     	public void accumulate (EasyConnectDataObject obj) {
@@ -826,6 +816,7 @@ public class EasyConnect extends Service {
     	ec_service_started = true;
     	creater = ctx;
     	EasyConnect.device_model = device_model;
+    	csmapi.log_tag = device_model;
     	upstream_thread_pool = new HashMap<String, UpStreamThread>();
     	downstream_thread_pool = new HashMap<String, DownStreamThread>();
         attach_lock = new Semaphore(1);
@@ -977,119 +968,5 @@ public class EasyConnect extends Service {
     		logging("Set EasyConnect.request_interval = "+ request_interval);
             EasyConnect.request_interval = request_interval;
     	}
-    }
-    
-    // ********************* //
-    // * Internal HTTP API * //
-    // ********************* //
-
-    static private boolean attach_api (JSONObject profile) {
-		try {
-			logging(d_id +" attaching to "+ EC_HOST);
-	        String url = "http://"+ EC_HOST +"/"+ d_id;
-			JSONObject tmp = new JSONObject();
-			tmp.put("profile", profile);
-			http.response res = http.post(url, tmp);
-			if (res.status_code != 200) {
-				logging("[attach_api] "+ "Response Code: "+ res.status_code);
-				logging("[attach_api] "+ "Response from "+ url);
-				logging("[attach_api] "+ res.body);
-			}
-	        return res.status_code == 200;
-		} catch (NullPointerException e) {
-			e.printStackTrace();
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-		return false;
-    }
-
-    static private boolean detach_api () {
-		try {
-			logging(d_id +" detaching from "+ EC_HOST);
-			String url = "http://"+ EC_HOST +"/"+ d_id;
-	        return http.delete(url).status_code == 200;
-		} catch (NullPointerException e) {
-			e.printStackTrace();
-		}
-		return false;
-    }
-    
-    static private class http {
-    	static public class response {
-        	public String body;
-        	public int status_code;
-        	public response (String body, int status_code) {
-                this.body = body;
-                this.status_code = status_code;
-            }
-        }
-    	
-    	static public response get (String url_str) {
-    		return request("GET", url_str, null);
-        }
-    	
-    	static public response post (String url_str, JSONObject post_body) {
-    		return request("POST", url_str, post_body.toString());
-    	}
-    	
-    	static public response delete (String url_str) {
-    		return request("DELETE", url_str, null);
-    	}
-    	
-    	static public response put (String url_str, JSONObject put_body) {
-    		return put(url_str, put_body.toString());
-    	}
-    	
-    	static public response put (String url_str, String post_body) {
-    		return request("PUT", url_str, post_body);
-    	}
-    	
-    	static private response request (String method, String url_str, String request_body) {
-    		try {
-    			URL url = new URL(url_str);
-    			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-    			connection.setRequestMethod(method);
-    			
-    			if (method.equals("POST") || method.equals("PUT")) {
-	    			connection.setDoOutput(true);	// needed, even if method had been set to POST
-	    			connection.setRequestProperty("Content-Type", "application/json");
-	    			
-	    			OutputStream os = connection.getOutputStream();
-				    os.write(request_body.getBytes());
-    			}
-    			
-                int status_code = connection.getResponseCode();
-            	InputStream in;
-                
-                if(status_code >= HttpURLConnection.HTTP_BAD_REQUEST) {
-                    in = new BufferedInputStream(connection.getErrorStream());
-                } else {
-                    in = new BufferedInputStream(connection.getInputStream());
-                }
-                
-                BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-                String body = "";
-                String line = "";
-                while ((line = reader.readLine()) != null) {
-                    body += line + "\n";
-                }
-                connection.disconnect();
-                reader.close();
-                return new response(body, status_code);
-    		} catch (MalformedURLException e) {
-    			e.printStackTrace();
-    			logging("MalformedURLException");
-            	return new response("MalformedURLException", 400);
-    		} catch (IOException e) {
-    			e.printStackTrace();
-    			logging("IOException");
-            	return new response("IOException", 400);
-    		}
-    	}
-    	
-        static private void logging (String message) {
-            Log.i(device_model, "[EasyConnect.http] " + message);
-        }  	
     }
 }
