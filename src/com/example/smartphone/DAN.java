@@ -1,19 +1,11 @@
 package com.example.smartphone;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
 import java.net.SocketException;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
@@ -52,11 +44,11 @@ public class DAN extends Service {
 	
 	static HashSet<Handler> subscribers = null;
 	static public enum Tag {
-		D_NAME_GENEREATED,
+		D_NAME_GENERATED,
 		ATTACH_TRYING,
 		ATTACH_FAILED,
-		ATTACH_SUCCESS,
-		DETACH_SUCCESS,
+		ATTACH_SUCCESSED,
+		DETACH_SUCCESSED,
 	};
 	
 	static private final int NOTIFICATION_ID = 1;
@@ -229,7 +221,7 @@ public class DAN extends Service {
     		notify_all_subscribers(Tag.ATTACH_TRYING, csmapi.ENDPOINT);
     		
         	try {
-				notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
+				notify_all_subscribers(Tag.D_NAME_GENERATED, profile.getString("d_name"));
 			} catch (JSONException e1) {
 				e1.printStackTrace();
 			} catch (NullPointerException e2) {
@@ -291,7 +283,7 @@ public class DAN extends Service {
             boolean detach_result = csmapi.delete(d_id);
     		logging("Detached from EasyConnect, result: "+ detach_result);
             if (detach_result) {
-            	notify_all_subscribers(Tag.DETACH_SUCCESS, csmapi.ENDPOINT);
+            	notify_all_subscribers(Tag.DETACH_SUCCESSED, csmapi.ENDPOINT);
             }
             
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
@@ -581,9 +573,9 @@ public class DAN extends Service {
 			ec_status_lock.acquire();
 	    	ec_status = new_ec_status;
 	    	if (ec_status) {
-	        	notify_all_subscribers(Tag.ATTACH_SUCCESS, csmapi.ENDPOINT);
+	        	notify_all_subscribers(Tag.ATTACH_SUCCESSED, csmapi.ENDPOINT);
                 try {
-                    notify_all_subscribers(Tag.D_NAME_GENEREATED, profile.getString("d_name"));
+                    notify_all_subscribers(Tag.D_NAME_GENERATED, profile.getString("d_name"));
                 } catch (JSONException e) {
                 }
 	    	}

@@ -125,11 +125,11 @@ public class FeatureActivity extends Activity {
     	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
     	        	break;
     	        	
-    	        case ATTACH_SUCCESS:
+    	        case ATTACH_SUCCESSED:
     	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
     	        	break;
 	    				
-    	        case D_NAME_GENEREATED:
+    	        case D_NAME_GENERATED:
     	        	String d_name = msg.getData().getString("message");
     	        	logging("Get d_name:"+ d_name);
     				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
@@ -161,7 +161,7 @@ public class FeatureActivity extends Activity {
 			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));
 			break;
 			
-		case ATTACH_SUCCESS:
+		case ATTACH_SUCCESSED:
 			tv_ec_host_status.setText("~");
 			tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
 			break;
