@@ -95,7 +95,7 @@ public class SpeakerService extends Service {
             current_sound_Hz = 0;
             Handler handler = new Handler () {
             	public void handleMessage (Message msg) {
-            		EasyConnect.DataSet ds = msg.getData().getParcelable("dataset");
+            		DAN.DataSet ds = msg.getData().getParcelable("dataset");
             		try {
                 		logging(ds.timestamp +": "+ ((JSONArray)(ds.newest().data)).getInt(0));
                 		int new_sound_Hz = get_sound_rate(((JSONArray)(ds.newest().data)).getInt(0));
@@ -116,7 +116,7 @@ public class SpeakerService extends Service {
 					}
         	    }
             };
-            EasyConnect.subscribe("Speaker", handler);
+            DAN.subscribe("Speaker", handler);
             
         } else {
             logging("already initialized");
@@ -152,7 +152,7 @@ public class SpeakerService extends Service {
     public void onDestroy () {
         running = false;
         working = false;
-        EasyConnect.unsubscribe("Speaker");
+        DAN.unsubscribe("Speaker");
 		ATM.isPlaySound = false;
 		ATM.stop();
     }

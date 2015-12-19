@@ -51,11 +51,11 @@ public class MainActivity extends TabActivity {
         tabHost.addTab(tabspec);
         
         // start EasyConnect Service
-        EasyConnect.start(this, C.dm_name);
+        DAN.init(this, C.dm_name);
         
         JSONObject profile = new JSONObject();
         try {
-	        profile.put("d_name", "Android"+ EasyConnect.get_mac_addr());
+	        profile.put("d_name", "Android"+ DAN.get_mac_addr());
 	        profile.put("dm_name", C.dm_name);
 	        JSONArray feature_list = new JSONArray();
 	        for (String f: C.df_list) {
@@ -63,24 +63,24 @@ public class MainActivity extends TabActivity {
 	        }
 	        profile.put("df_list", feature_list);
 	        profile.put("u_name", C.u_name);
-	        profile.put("monitor", EasyConnect.get_mac_addr());
-	        EasyConnect.attach(EasyConnect.get_d_id(EasyConnect.get_mac_addr()), profile);
+	        profile.put("monitor", DAN.get_mac_addr());
+	        DAN.attach(DAN.get_d_id(DAN.get_mac_addr()), profile);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}
     }
     
     public void end () {
-		EasyConnect.detach();
+		DAN.detach();
         finish();
     }
     
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         menu.clear();
-        menu.add(0, MENU_ITEM_ID_API_VERSION, 0, "API Version: "+ EasyConnect.version);
+        menu.add(0, MENU_ITEM_ID_API_VERSION, 0, "API Version: "+ DAN.version);
         menu.add(0, MENU_ITEM_ID_DA_VERSION, 0, "DA Version: "+ MainActivity.version);
-        menu.add(0, MENU_ITEM_REQUEST_INTERVAL, 0, "Request Interval: "+ EasyConnect.get_request_interval() +" ms");
+        menu.add(0, MENU_ITEM_REQUEST_INTERVAL, 0, "Request Interval: "+ DAN.get_request_interval() +" ms");
         return super.onPrepareOptionsMenu(menu);
     }
     
@@ -91,7 +91,7 @@ public class MainActivity extends TabActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
         case MENU_ITEM_REQUEST_INTERVAL:
-        	show_alert_dialog("Change Request Interval", "Input a integer as request interval (unit: ms)", ""+ EasyConnect.get_request_interval());
+        	show_alert_dialog("Change Request Interval", "Input a integer as request interval (unit: ms)", ""+ DAN.get_request_interval());
             break;
         }
         return super.onOptionsItemSelected(item);
@@ -111,7 +111,7 @@ public class MainActivity extends TabActivity {
             public void onClick (DialogInterface dialog, int id) {
                 String value = input.getText().toString();
                 try {
-                	EasyConnect.set_request_interval(Integer.parseInt(value));
+                	DAN.set_request_interval(Integer.parseInt(value));
                 } catch (NumberFormatException e) {
                 	logging("Input is not a integer");
                 }

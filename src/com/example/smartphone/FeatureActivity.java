@@ -1,6 +1,6 @@
 package com.example.smartphone;
 
-import com.example.smartphone.EasyConnect.Tag;
+import com.example.smartphone.DAN.Tag;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -116,17 +116,17 @@ public class FeatureActivity extends Activity {
         
         ec_status_handler = new Handler () {
     	    public void handleMessage (Message msg) {
-    	        switch ((EasyConnect.Tag)msg.getData().get("tag")) {
+    	        switch ((DAN.Tag)msg.getData().get("tag")) {
     	        case ATTACH_TRYING:
-    	        	show_ec_status((EasyConnect.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
+    	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
     	        	break;
     	        	
     	        case ATTACH_FAILED:
-    	        	show_ec_status((EasyConnect.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
+    	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
     	        	break;
     	        	
     	        case ATTACH_SUCCESS:
-    	        	show_ec_status((EasyConnect.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
+    	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
     	        	break;
 	    				
     	        case D_NAME_GENEREATED:
@@ -138,16 +138,16 @@ public class FeatureActivity extends Activity {
     	        }
     	    }
     	};
-    	EasyConnect.register(ec_status_handler);
+    	DAN.register(ec_status_handler);
     	
-    	String d_name = EasyConnect.get_d_name();
+    	String d_name = DAN.get_d_name();
     	logging("Get d_name:"+ d_name);
 		TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
 		tv_d_name.setText(d_name);
 
     }
     
-    public void show_ec_status (EasyConnect.Tag t, String host) {
+    public void show_ec_status (DAN.Tag t, String host) {
 		((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
 		TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
 		switch (t) {
@@ -179,7 +179,7 @@ public class FeatureActivity extends Activity {
     public void onPause () {
     	super.onPause();
     	if (isFinishing()) {
-        	EasyConnect.deregister(ec_status_handler);
+        	DAN.deregister(ec_status_handler);
     	}
     }
     

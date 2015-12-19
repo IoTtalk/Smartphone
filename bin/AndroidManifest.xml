@@ -38,7 +38,7 @@
             android:screenOrientation="portrait">
         </activity>
         
-		<service android:name="com.example.smartphone.EasyConnect"></service>
+		<service android:name="com.example.smartphone.DAN"></service>
 		<service android:name="com.example.smartphone.AccelerometerService"></service>
 		<service android:name="com.example.smartphone.MicService"></service>
 		<service android:name="com.example.smartphone.SpeakerService"></service>

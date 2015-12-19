@@ -96,7 +96,7 @@ public class MonitorDeviceListActivity extends Activity {
 //		MonitorDataThread.set_device_list_handler(message_handler);
         Handler handler = new Handler() {
     	    public void handleMessage (Message msg) {
-        		EasyConnect.DataSet ds = msg.getData().getParcelable("dataset");
+        		DAN.DataSet ds = msg.getData().getParcelable("dataset");
     			try {
 	        		Object tmp = ds.newest().data;
 	        		JSONObject obj;
@@ -112,7 +112,7 @@ public class MonitorDeviceListActivity extends Activity {
 				}
     	    }
     	};
-    	EasyConnect.subscribe("Display", handler);
+    	DAN.subscribe("Display", handler);
 	}
 	
 	@Override
@@ -127,7 +127,7 @@ public class MonitorDeviceListActivity extends Activity {
 	@Override
 	public void onDestroy () {
 		super.onDestroy();
-    	EasyConnect.unsubscribe("Display");
+    	DAN.unsubscribe("Display");
 	}
 	
 	public void update_index () {

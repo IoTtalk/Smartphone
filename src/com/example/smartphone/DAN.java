@@ -40,9 +40,9 @@ import android.os.Parcelable;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-public class EasyConnect extends Service {
+public class DAN extends Service {
 	static public final String version = "20151217a";
-	static private EasyConnect self = null;
+	static private DAN self = null;
 	static private boolean ec_service_started;
 	static private Context creater = null;
 	static private Class<? extends Context> on_click_action;
@@ -124,7 +124,7 @@ public class EasyConnect extends Service {
     		try {
 				socket = new DatagramSocket(null);
 				socket.setReuseAddress(true);
-				socket.bind(new InetSocketAddress("0.0.0.0", EasyConnect.EC_BROADCAST_PORT));
+				socket.bind(new InetSocketAddress("0.0.0.0", DAN.EC_BROADCAST_PORT));
 				byte[] lmessage = new byte[20];
 				DatagramPacket packet = new DatagramPacket(lmessage, lmessage.length);
 				while (working_permission) {
@@ -297,8 +297,8 @@ public class EasyConnect extends Service {
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
             notification_manager.cancelAll();
             
-            if (EasyConnect.self != null) {
-            	EasyConnect.self.stopSelf();
+            if (DAN.self != null) {
+            	DAN.self.stopSelf();
             }
             
             self = null;
@@ -308,20 +308,20 @@ public class EasyConnect extends Service {
     
     static private void reset () {
     	csmapi.ENDPOINT = DEFAULT_EC_HOST;
-    	EasyConnect.self = null;
-        EasyConnect.request_interval = 150;
-        EasyConnect.ec_service_started = false;
+    	DAN.self = null;
+        DAN.request_interval = 150;
+        DAN.ec_service_started = false;
     }
     
     static private class UpStreamThread extends Thread {
     	boolean working_permission;
     	String feature;
-    	LinkedBlockingQueue<EasyConnectDataObject> queue;
+    	LinkedBlockingQueue<DANDataObject> queue;
     	long timestamp;
     	
     	public UpStreamThread (String feature) {
     		this.feature = feature;
-    		this.queue = new LinkedBlockingQueue<EasyConnectDataObject>();
+    		this.queue = new LinkedBlockingQueue<DANDataObject>();
     		this.timestamp = 0;
     	}
     	
@@ -330,7 +330,7 @@ public class EasyConnect extends Service {
 			this.interrupt();
     	}
     	
-    	public void enqueue (EasyConnectDataObject data) {
+    	public void enqueue (DANDataObject data) {
     		try {
 				queue.put(data);
 			} catch (InterruptedException e) {
@@ -341,7 +341,7 @@ public class EasyConnect extends Service {
     	public void run () {
     		logging("UpStreamThread("+ feature +") starts");
     		try {
-				if (!json_array_has_string(EasyConnect.profile.getJSONArray("df_list"), feature)) {
+				if (!json_array_has_string(DAN.profile.getJSONArray("df_list"), feature)) {
 					logging("UpStreamThread("+ feature +"): feature not exists, exit");
 					return;
 				}
@@ -358,12 +358,12 @@ public class EasyConnect extends Service {
         			}
     				timestamp = System.currentTimeMillis();
     				
-					EasyConnectDataObject acc = queue.take();
+					DANDataObject acc = queue.take();
     				int buffer_count = 1;
     				int queue_len = queue.size();
     				for (int i = 0; i < queue_len; i++) {
 //    				while (!queue.isEmpty()) {	// This may cause starvation
-    					EasyConnectDataObject tmp = queue.take();
+    					DANDataObject tmp = queue.take();
     					if (!working_permission) {
         		    		logging("UpStreamThread("+ feature +") droped");
     						return;
@@ -410,7 +410,7 @@ public class EasyConnect extends Service {
     	public void run () {
     		logging("DownStreamThread("+ feature +") starts");
     		try {
-				if (!json_array_has_string(EasyConnect.profile.getJSONArray("df_list"), feature)) {
+				if (!json_array_has_string(DAN.profile.getJSONArray("df_list"), feature)) {
 					logging("DownStreamThread("+ feature +"): feature not exists, exit");
 					return;
 				}
@@ -616,7 +616,7 @@ public class EasyConnect extends Service {
     }
 
     static private void logging (String message) {
-        Log.i(device_model, "[EasyConnect] " + message);
+        Log.i(device_model, "[DAN] " + message);
     }
     
     static private void notify_all_subscribers (Tag tag, String message) {
@@ -640,13 +640,13 @@ public class EasyConnect extends Service {
     
     static private Context get_reliable_context () {
     	if (self == null) {
-    		logging("EasyConnect Service is null, use creater instead");
+    		logging("DAN Service is null, use creater instead");
     		return creater;
     	}
     	return self;
     }
     
-    static private class EasyConnectDataObject {
+    static private class DANDataObject {
     	private Object value;
     	
     	static private boolean is_double_array (Object obj) {
@@ -693,7 +693,7 @@ public class EasyConnect extends Service {
     		return null;
     	}
     	
-    	public EasyConnectDataObject (Object obj) {
+    	public DANDataObject (Object obj) {
     		if (is_double_array(obj)) {
     			try {
 					value = to_double_array(obj);
@@ -741,13 +741,13 @@ public class EasyConnect extends Service {
 	    		}
 	    		ret.put("data", data);
     		} catch (JSONException e) {
-    			logging("EasyConnectDataObject.toString() JSONException");
+    			logging("DANDataObject.toString() JSONException");
     			e.printStackTrace();
     		}
     		return ret;
     	}
     	
-    	public void accumulate (EasyConnectDataObject obj) {
+    	public void accumulate (DANDataObject obj) {
     		if (!value.getClass().equals(obj.value.getClass())) {
     			return;
     		}
@@ -807,15 +807,15 @@ public class EasyConnect extends Service {
     // ************** //
     // * Public API * //
     // ************** //
-    static public void start (Context ctx, String device_model) {
+    static public void init (Context ctx, String device_model) {
     	if (ec_service_started) {
-    		logging("EasyConnect.start(): already started");
+    		logging("DAN.init(): already started");
     		return;
     	}
-		logging("EasyConnect.start()");
+		logging("DAN.init()");
     	ec_service_started = true;
     	creater = ctx;
-    	EasyConnect.device_model = device_model;
+    	DAN.device_model = device_model;
     	csmapi.log_tag = device_model;
     	upstream_thread_pool = new HashMap<String, UpStreamThread>();
     	downstream_thread_pool = new HashMap<String, DownStreamThread>();
@@ -834,7 +834,7 @@ public class EasyConnect extends Service {
         }
         
     	// start this service
-        Intent intent = new Intent(ctx, EasyConnect.class);
+        Intent intent = new Intent(ctx, DAN.class);
         ctx.getApplicationContext().startService(intent);
     }
     
@@ -901,11 +901,11 @@ public class EasyConnect extends Service {
     }
     
     static public void attach (String d_id, JSONObject profile) {
-    	EasyConnect.d_id = d_id;
-    	EasyConnect.profile = profile;
-    	if (!EasyConnect.profile.has("is_sim")) {
+    	DAN.d_id = d_id;
+    	DAN.profile = profile;
+    	if (!DAN.profile.has("is_sim")) {
     		try {
-				EasyConnect.profile.put("is_sim", false);
+				DAN.profile.put("is_sim", false);
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
@@ -915,11 +915,11 @@ public class EasyConnect extends Service {
     }
 
     static public void push_data (String feature, Object data) {
-    	EasyConnectDataObject ary = new EasyConnectDataObject(data);
+    	DANDataObject ary = new DANDataObject(data);
         push_data(feature, ary);
     }
     
-    static private void push_data (String feature, EasyConnectDataObject data) {
+    static private void push_data (String feature, DANDataObject data) {
     	if (!upstream_thread_pool.containsKey(feature)) {
     		UpStreamThread ust = new UpStreamThread(feature);
     		upstream_thread_pool.put(feature, ust);
@@ -960,13 +960,13 @@ public class EasyConnect extends Service {
     }
     
     static public long get_request_interval () {
-		return EasyConnect.request_interval;
+		return DAN.request_interval;
     }
     
     static public void set_request_interval (long request_interval) {
     	if (request_interval > 0) {
-    		logging("Set EasyConnect.request_interval = "+ request_interval);
-            EasyConnect.request_interval = request_interval;
+    		logging("Set DAN.request_interval = "+ request_interval);
+            DAN.request_interval = request_interval;
     	}
     }
 }
