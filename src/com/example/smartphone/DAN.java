@@ -44,11 +44,9 @@ public class DAN extends Service {
 	
 	static HashSet<Handler> subscribers = null;
 	static public enum Tag {
-		D_NAME_GENERATED,
 		ATTACH_TRYING,
 		ATTACH_FAILED,
 		ATTACH_SUCCESSED,
-		DETACH_SUCCESSED,
 	};
 	
 	static private final int NOTIFICATION_ID = 1;
@@ -220,14 +218,6 @@ public class DAN extends Service {
     		boolean attach_success = false;
     		notify_all_subscribers(Tag.ATTACH_TRYING, csmapi.ENDPOINT);
     		
-        	try {
-				notify_all_subscribers(Tag.D_NAME_GENERATED, profile.getString("d_name"));
-			} catch (JSONException e1) {
-				e1.printStackTrace();
-			} catch (NullPointerException e2) {
-                logging("[RegisterThread] profile is null, try to work on");
-                e2.printStackTrace();
-			}
     		try {
 	            while ( working_permission && !attach_success ) {
 	            	if (ec_status) {
@@ -282,9 +272,6 @@ public class DAN extends Service {
             ec_status = false;
             boolean detach_result = csmapi.delete(d_id);
     		logging("Detached from EasyConnect, result: "+ detach_result);
-            if (detach_result) {
-            	notify_all_subscribers(Tag.DETACH_SUCCESSED, csmapi.ENDPOINT);
-            }
             
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
             notification_manager.cancelAll();
@@ -574,10 +561,6 @@ public class DAN extends Service {
 	    	ec_status = new_ec_status;
 	    	if (ec_status) {
 	        	notify_all_subscribers(Tag.ATTACH_SUCCESSED, csmapi.ENDPOINT);
-                try {
-                    notify_all_subscribers(Tag.D_NAME_GENERATED, profile.getString("d_name"));
-                } catch (JSONException e) {
-                }
 	    	}
 	    	logging("show notification: "+ ec_status);
 	    	Context ctx = get_reliable_context();

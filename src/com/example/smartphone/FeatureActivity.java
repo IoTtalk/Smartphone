@@ -127,10 +127,7 @@ public class FeatureActivity extends Activity {
     	        	
     	        case ATTACH_SUCCESSED:
     	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
-    	        	break;
-	    				
-    	        case D_NAME_GENERATED:
-    	        	String d_name = msg.getData().getString("message");
+    	        	String d_name = DAN.get_d_name();
     	        	logging("Get d_name:"+ d_name);
     				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
     				tv_d_name.setText(d_name);
