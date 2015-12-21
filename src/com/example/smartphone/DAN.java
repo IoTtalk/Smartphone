@@ -209,16 +209,22 @@ public class DAN extends Service {
     			logging("Already stopped");
 				return;
 			}
+			working_permission = false;
 			self.interrupt();
     	}
     	
     	@Override
         public void run () {
     		logging("RegisterThread starts");
-    		boolean attach_success = false;
-    		notify_all_subscribers(Tag.ATTACH_TRYING, csmapi.ENDPOINT);
-    		
     		try {
+        		if (csmapi.ENDPOINT.equals(DEFAULT_EC_HOST)) {
+        			// Wait for a while before attaching to global EC
+					Thread.sleep(2000);
+        		}
+        		
+        		boolean attach_success = false;
+        		notify_all_subscribers(Tag.ATTACH_TRYING, csmapi.ENDPOINT);
+        		
 	            while ( working_permission && !attach_success ) {
 	            	if (ec_status) {
 	            		break;

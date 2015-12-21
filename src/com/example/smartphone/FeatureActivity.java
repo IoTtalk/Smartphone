@@ -1,5 +1,9 @@
 package com.example.smartphone;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import com.example.smartphone.DAN.Tag;
 
 import android.app.Activity;
@@ -109,10 +113,14 @@ public class FeatureActivity extends Activity {
                 getApplicationContext().stopService(new Intent(FeatureActivity.this, MicService.class));
                 logging("Request SpeakerService stop");
                 getApplicationContext().stopService(new Intent(FeatureActivity.this, SpeakerService.class));
-                
-                MainActivity.self.end();
+
+        		DAN.detach();
+                finish();
             }
         });
+        
+        // start EasyConnect Service
+        DAN.init(this, C.dm_name);
         
         ec_status_handler = new Handler () {
     	    public void handleMessage (Message msg) {
@@ -136,6 +144,22 @@ public class FeatureActivity extends Activity {
     	    }
     	};
     	DAN.register(ec_status_handler);
+        
+        JSONObject profile = new JSONObject();
+        try {
+	        profile.put("d_name", "Android"+ DAN.get_mac_addr());
+	        profile.put("dm_name", C.dm_name);
+	        JSONArray feature_list = new JSONArray();
+	        for (String f: C.df_list) {
+	        	feature_list.put(f);
+	        }
+	        profile.put("df_list", feature_list);
+	        profile.put("u_name", C.u_name);
+	        profile.put("monitor", DAN.get_mac_addr());
+	        DAN.attach(DAN.get_d_id(DAN.get_mac_addr()), profile);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
     	
     	String d_name = DAN.get_d_name();
     	logging("Get d_name:"+ d_name);

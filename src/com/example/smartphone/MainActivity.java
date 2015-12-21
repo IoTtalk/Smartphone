@@ -27,12 +27,9 @@ public class MainActivity extends TabActivity {
     
 	static final String version = "20151201a";
 	
-	static MainActivity self;
-	
     @Override
     public void onCreate(Bundle savedInstanceState) {
         logging("=============================================");
-    	self = this;
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
@@ -50,29 +47,7 @@ public class MainActivity extends TabActivity {
         tabspec.setContent(new Intent(this, MonitorDeviceListActivity.class));
         tabHost.addTab(tabspec);
         
-        // start EasyConnect Service
-        DAN.init(this, C.dm_name);
-        
-        JSONObject profile = new JSONObject();
-        try {
-	        profile.put("d_name", "Android"+ DAN.get_mac_addr());
-	        profile.put("dm_name", C.dm_name);
-	        JSONArray feature_list = new JSONArray();
-	        for (String f: C.df_list) {
-	        	feature_list.put(f);
-	        }
-	        profile.put("df_list", feature_list);
-	        profile.put("u_name", C.u_name);
-	        profile.put("monitor", DAN.get_mac_addr());
-	        DAN.attach(DAN.get_d_id(DAN.get_mac_addr()), profile);
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-    }
-    
-    public void end () {
-		DAN.detach();
-        finish();
+        DAN.set_on_click_action(MainActivity.class);
     }
     
     @Override
