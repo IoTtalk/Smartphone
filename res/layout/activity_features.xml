@@ -50,8 +50,8 @@
 		android:textOff="Speaker idle"/>
     
     <Button
-        android:id="@+id/btn_detach"
-        android:text="Detach"
+        android:id="@+id/btn_deregister"
+        android:text="Deregister"
 		style="@style/thin_small_button"/>
     
 </LinearLayout>

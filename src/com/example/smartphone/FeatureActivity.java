@@ -103,7 +103,7 @@ public class FeatureActivity extends Activity {
             
         }
         
-        Button btn_detach = (Button)findViewById(R.id.btn_detach);
+        Button btn_detach = (Button)findViewById(R.id.btn_deregister);
         btn_detach.setOnClickListener(new View.OnClickListener () {
             @Override
             public void onClick (View v) {
@@ -114,7 +114,7 @@ public class FeatureActivity extends Activity {
                 logging("Request SpeakerService stop");
                 getApplicationContext().stopService(new Intent(FeatureActivity.this, SpeakerService.class));
 
-        		DAN.detach();
+        		DAN.deregister();
                 finish();
             }
         });
@@ -143,7 +143,7 @@ public class FeatureActivity extends Activity {
     	        }
     	    }
     	};
-    	DAN.register(ec_status_handler);
+    	DAN.subscribe_message(ec_status_handler);
         
         JSONObject profile = new JSONObject();
         try {
@@ -156,7 +156,7 @@ public class FeatureActivity extends Activity {
 	        profile.put("df_list", feature_list);
 	        profile.put("u_name", C.u_name);
 	        profile.put("monitor", DAN.get_mac_addr());
-	        DAN.attach(DAN.get_d_id(DAN.get_mac_addr()), profile);
+	        DAN.register(DAN.get_d_id(DAN.get_mac_addr()), profile);
 		} catch (JSONException e) {
 			e.printStackTrace();
 		}

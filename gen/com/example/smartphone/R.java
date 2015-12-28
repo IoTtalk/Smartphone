@@ -1000,7 +1000,7 @@ containing a value of this type.
         public static final int always=0x7f05000b;
         public static final int beginning=0x7f050011;
         public static final int btn_accelerometer=0x7f05003f;
-        public static final int btn_detach=0x7f050042;
+        public static final int btn_deregister=0x7f050042;
         public static final int btn_mic=0x7f050040;
         public static final int btn_speaker=0x7f050041;
         public static final int checkbox=0x7f05002d;

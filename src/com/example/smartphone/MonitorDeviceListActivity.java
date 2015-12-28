@@ -112,7 +112,7 @@ public class MonitorDeviceListActivity extends Activity {
 				}
     	    }
     	};
-    	DAN.subscribe("Display", handler);
+    	DAN.subscribe_data("Display", handler);
 	}
 	
 	@Override

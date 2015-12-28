@@ -116,7 +116,7 @@ public class SpeakerService extends Service {
 					}
         	    }
             };
-            DAN.subscribe("Speaker", handler);
+            DAN.subscribe_data("Speaker", handler);
             
         } else {
             logging("already initialized");

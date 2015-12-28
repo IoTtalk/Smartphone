@@ -243,7 +243,7 @@ int id activity_chooser_view_content 0x7f050025
 int id always 0x7f05000b
 int id beginning 0x7f050011
 int id btn_accelerometer 0x7f05003f
-int id btn_detach 0x7f050042
+int id btn_deregister 0x7f050042
 int id btn_mic 0x7f050040
 int id btn_speaker 0x7f050041
 int id checkbox 0x7f05002d

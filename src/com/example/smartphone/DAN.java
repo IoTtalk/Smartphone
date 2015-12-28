@@ -251,9 +251,9 @@ public class DAN extends Service {
     	}
     }
     
-    static private class DetachThread extends Thread {
-    	static DetachThread self;
-    	private DetachThread () {}
+    static private class DeregisterThread extends Thread {
+    	static DeregisterThread self;
+    	private DeregisterThread () {}
     	
     	static public void start_working () {
     		if (self != null) {
@@ -261,7 +261,7 @@ public class DAN extends Service {
     	    	show_ec_status_on_notification(ec_status);
     			return;
     		}
-    		self = new DetachThread();
+    		self = new DeregisterThread();
     		self.start();
     		try {
 				self.join();
@@ -276,8 +276,8 @@ public class DAN extends Service {
             RegisterThread.stop_working();
             
             ec_status = false;
-            boolean detach_result = csmapi.delete(d_id);
-    		logging("Detached from EasyConnect, result: "+ detach_result);
+            boolean deregister_result = csmapi.delete(d_id);
+    		logging("Deregistered from EasyConnect, result: "+ deregister_result);
             
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
             notification_manager.cancelAll();
@@ -870,7 +870,7 @@ public class DAN extends Service {
     	return "Error";
     }
     
-    static public void register (Handler handler) {
+    static public void subscribe_message (Handler handler) {
     	if (subscribers == null) {
     		subscribers = new HashSet<Handler>();
     	}
@@ -881,7 +881,7 @@ public class DAN extends Service {
     	subscribers.remove(handler);
     }
     
-    static public void attach (String d_id, JSONObject profile) {
+    static public void register (String d_id, JSONObject profile) {
     	DAN.d_id = d_id;
     	DAN.profile = profile;
     	if (!DAN.profile.has("is_sim")) {
@@ -910,7 +910,7 @@ public class DAN extends Service {
     	ust.enqueue(data);
     }
     
-    static public void subscribe (String feature, Handler callback) {
+    static public void subscribe_data (String feature, Handler callback) {
     	if (!downstream_thread_pool.containsKey(feature)) {
     		DownStreamThread dst = new DownStreamThread(feature, callback);
     		downstream_thread_pool.put(feature, dst);
@@ -926,7 +926,7 @@ public class DAN extends Service {
 		}
     }
 
-    static public void detach () {
+    static public void deregister () {
     	if (upstream_thread_pool != null) {
 			for (String feature: upstream_thread_pool.keySet()) {
 				upstream_thread_pool.get(feature).stop_working();
@@ -937,7 +937,7 @@ public class DAN extends Service {
 				downstream_thread_pool.get(feature).stop_working();
 			}
     	}
-    	DetachThread.start_working();
+    	DeregisterThread.start_working();
     }
     
     static public long get_request_interval () {

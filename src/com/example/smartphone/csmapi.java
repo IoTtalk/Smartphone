@@ -43,7 +43,7 @@ public class csmapi {
 
     static public boolean delete (String d_id) {
 		try {
-			logging(d_id +" detaching from "+ ENDPOINT);
+			logging(d_id +" deleting from "+ ENDPOINT);
 			String url = ENDPOINT +"/"+ d_id;
 			http.response res = http.delete(url);
 			if (res.status_code != 200) {
@@ -64,9 +64,9 @@ public class csmapi {
 			String url = ENDPOINT +"/"+ d_id + "/" + df_name;
 			http.response res = http.put(url, data);
 			if (res.status_code != 200) {
-				logging("[delete] "+ "Response from "+ url);
-				logging("[delete] "+ "Response Code: "+ res.status_code);
-				logging("[delete] "+ res.body);
+				logging("[push] "+ "Response from "+ url);
+				logging("[push] "+ "Response Code: "+ res.status_code);
+				logging("[push] "+ res.body);
 			}
 	        return res.status_code == 200;
 		} catch (NullPointerException e) {
@@ -81,9 +81,9 @@ public class csmapi {
 			String url = ENDPOINT +"/"+ d_id + "/" + df_name;
 	        http.response res = http.get(url);
 			if (res.status_code != 200) {
-				logging("[delete] "+ "Response from "+ url);
-				logging("[delete] "+ "Response Code: "+ res.status_code);
-				logging("[delete] "+ res.body);
+				logging("[pull] "+ "Response from "+ url);
+				logging("[pull] "+ "Response Code: "+ res.status_code);
+				logging("[pull] "+ res.body);
 			}
 			JSONObject tmp = new JSONObject(res.body);
 	        return tmp.getJSONArray("samples");
