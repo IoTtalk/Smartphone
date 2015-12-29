@@ -125,15 +125,15 @@ public class FeatureActivity extends Activity {
         ec_status_handler = new Handler () {
     	    public void handleMessage (Message msg) {
     	        switch ((DAN.Tag)msg.getData().get("tag")) {
-    	        case ATTACH_TRYING:
+    	        case REGISTER_TRYING:
     	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
     	        	break;
     	        	
-    	        case ATTACH_FAILED:
+    	        case REGISTER_FAILED:
     	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
     	        	break;
     	        	
-    	        case ATTACH_SUCCESSED:
+    	        case REGISTER_SUCCESSED:
     	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
     	        	String d_name = DAN.get_d_name();
     	        	logging("Get d_name:"+ d_name);
@@ -172,17 +172,17 @@ public class FeatureActivity extends Activity {
 		((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
 		TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
 		switch (t) {
-		case ATTACH_TRYING:
+		case REGISTER_TRYING:
 			tv_ec_host_status.setText("...");
 			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));
 			break;
 		
-		case ATTACH_FAILED:
+		case REGISTER_FAILED:
 			tv_ec_host_status.setText("!");
 			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));
 			break;
 			
-		case ATTACH_SUCCESSED:
+		case REGISTER_SUCCESSED:
 			tv_ec_host_status.setText("~");
 			tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
 			break;

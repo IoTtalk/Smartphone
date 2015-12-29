@@ -38,15 +38,15 @@ public class DAN extends Service {
 	static private boolean ec_service_started;
 	static private Context creater = null;
 	static private Class<? extends Context> on_click_action;
-	static private String device_model = "EasyConenct";
+	static private String log_tag = "EasyConenct";
 	static private String mac_addr_cache = null;
 	static private String mac_addr_error_prefix = "E2202";
 	
 	static HashSet<Handler> subscribers = null;
 	static public enum Tag {
-		ATTACH_TRYING,
-		ATTACH_FAILED,
-		ATTACH_SUCCESSED,
+		REGISTER_TRYING,
+		REGISTER_FAILED,
+		REGISTER_SUCCESSED,
 	};
 	
 	static private final int NOTIFICATION_ID = 1;
@@ -223,7 +223,7 @@ public class DAN extends Service {
         		}
         		
         		boolean attach_success = false;
-        		notify_all_subscribers(Tag.ATTACH_TRYING, csmapi.ENDPOINT);
+        		notify_all_subscribers(Tag.REGISTER_TRYING, csmapi.ENDPOINT);
         		
 	            while ( working_permission && !attach_success ) {
 	            	if (ec_status) {
@@ -237,7 +237,7 @@ public class DAN extends Service {
 	            	if (attach_success) {
 		            	break;
 	            	}
-	    			notify_all_subscribers(Tag.ATTACH_FAILED, csmapi.ENDPOINT);
+	    			notify_all_subscribers(Tag.REGISTER_FAILED, csmapi.ENDPOINT);
 		    		logging("Attach failed, wait for 2000ms and try again");
 					Thread.sleep(2000);
 	            }
@@ -566,7 +566,7 @@ public class DAN extends Service {
 			ec_status_lock.acquire();
 	    	ec_status = new_ec_status;
 	    	if (ec_status) {
-	        	notify_all_subscribers(Tag.ATTACH_SUCCESSED, csmapi.ENDPOINT);
+	        	notify_all_subscribers(Tag.REGISTER_SUCCESSED, csmapi.ENDPOINT);
 	    	}
 	    	logging("show notification: "+ ec_status);
 	    	Context ctx = get_reliable_context();
@@ -579,7 +579,7 @@ public class DAN extends Service {
 	        NotificationCompat.Builder notification_builder =
 	    		new NotificationCompat.Builder(ctx)
 		    	.setSmallIcon(R.drawable.ic_launcher)
-		    	.setContentTitle(device_model)
+		    	.setContentTitle(log_tag)
 		    	.setContentText(text);
 	        
 	        PendingIntent pending_intent = PendingIntent.getActivity(
@@ -597,7 +597,7 @@ public class DAN extends Service {
     }
 
     static private void logging (String message) {
-        Log.i(device_model, "[DAN] " + message);
+        Log.i(log_tag, "[DAN] " + message);
     }
     
     static private void notify_all_subscribers (Tag tag, String message) {
@@ -796,7 +796,7 @@ public class DAN extends Service {
 		logging("DAN.init()");
     	ec_service_started = true;
     	creater = ctx;
-    	DAN.device_model = device_model;
+    	DAN.log_tag = device_model;
     	csmapi.log_tag = device_model;
     	upstream_thread_pool = new HashMap<String, UpStreamThread>();
     	downstream_thread_pool = new HashMap<String, DownStreamThread>();
