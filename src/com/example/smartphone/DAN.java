@@ -33,7 +33,62 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class DAN extends Service {
-	static public final String version = "20160103a";
+	static public final String version = "20160104a";
+	
+    static public class EventObject {
+    	enum Type {EVENT, ODF}
+    	public Type type;
+    	
+    	// EVENT object
+    	public EventType event_tag;
+    	public String message;
+    	
+    	// ODF object
+    	public String feature;
+    	public DataSet dataset;
+    	
+    	public EventObject (EventType event_name, String message) {
+    		this.type = Type.EVENT;
+    		this.event_tag = event_name;
+    		this.message = message;
+    		this.feature = null;
+    		this.dataset = null;
+    	}
+    	
+    	public EventObject (String feature, DataSet dataset) {
+    		this.type = Type.ODF;
+    		this.event_tag = null;
+    		this.message = null;
+    		this.feature = feature;
+    		this.dataset = dataset;
+    	}
+    }
+    
+    static public abstract class Subscriber {
+        static class _Handler extends Handler {}
+    	private final Handler handler = new _Handler () {
+    		public void handleMessage (Message msg) {
+    			Subscriber.this.event_handler((EventObject)msg.obj);
+    		}
+    	};
+    	
+    	public void send_event (EventType event, String message) {
+	        Message msgObj = handler.obtainMessage();
+	        EventObject event_object = new EventObject(event, message);
+	        msgObj.obj = event_object;
+	        handler.sendMessage(msgObj);
+    	}
+    	
+    	public void send_odf (String feature, DataSet dataset) {
+	        Message msgObj = handler.obtainMessage();
+	        EventObject event_object = new EventObject(feature, dataset);
+	        msgObj.obj = event_object;
+	        handler.sendMessage(msgObj);
+    	}
+
+        public abstract void event_handler (EventObject event_object);
+    }
+    
 	static private DAN self = null;
 	static private boolean ec_service_started;
 	static private Context creater = null;
@@ -42,8 +97,8 @@ public class DAN extends Service {
 	static private String mac_addr_cache = null;
 	static private String mac_addr_error_prefix = "E2202";
 	
-	static HashSet<Handler> subscribers = null;
-	static public enum Tag {
+	static HashSet<Subscriber> event_subscribers = null;
+	static public enum EventType {
 		REGISTER_FAILED,
 		REGISTER_SUCCESSED,
 	};
@@ -235,7 +290,7 @@ public class DAN extends Service {
 	            	if (attach_success) {
 		            	break;
 	            	}
-	    			notify_all_subscribers(Tag.REGISTER_FAILED, csmapi.ENDPOINT);
+	    			notify_all_subscribers(EventType.REGISTER_FAILED, csmapi.ENDPOINT);
 		    		logging("Attach failed, wait for 2000ms and try again");
 					Thread.sleep(2000);
 	            }
@@ -375,11 +430,11 @@ public class DAN extends Service {
     static private class DownStreamThread extends Thread {
     	boolean working_permission;
     	String feature;
-    	Handler subscriber;
+    	Subscriber subscriber;
     	long timestamp;
     	String data_timestamp;
     	
-    	public DownStreamThread (String feature, Handler callback) {
+    	public DownStreamThread (String feature, Subscriber callback) {
     		this.feature = feature;
     		this.subscriber = callback;
     		this.timestamp = 0;
@@ -443,13 +498,7 @@ public class DAN extends Service {
     			return;
     		}
     		data_timestamp = ds.timestamp;
-    		// We got new data
-            Message msgObj = subscriber.obtainMessage();
-            Bundle bundle = new Bundle();
-            bundle.putParcelable("dataset", new DataSet(data));
-            bundle.putString("feature", feature);
-            msgObj.setData(bundle);
-            subscriber.sendMessage(msgObj);
+            subscriber.send_odf(feature, new DataSet(data));
     	}
     }
     
@@ -564,7 +613,7 @@ public class DAN extends Service {
 			ec_status_lock.acquire();
 	    	ec_status = new_ec_status;
 	    	if (ec_status) {
-	        	notify_all_subscribers(Tag.REGISTER_SUCCESSED, csmapi.ENDPOINT);
+	        	notify_all_subscribers(EventType.REGISTER_SUCCESSED, csmapi.ENDPOINT);
 	    	}
 	    	logging("show notification: "+ ec_status);
 	    	Context ctx = get_reliable_context();
@@ -598,23 +647,14 @@ public class DAN extends Service {
         Log.i(log_tag, "[DAN] " + message);
     }
     
-    static private void notify_all_subscribers (Tag tag, String message) {
-    	if (subscribers == null) {
+    static private void notify_all_subscribers (EventType event, String message) {
+    	if (event_subscribers == null) {
     		logging("Broadcast: No subscribers");
     		return;
     	}
-    	for (Handler handler: subscribers) {
-    		send_message_to(handler, tag, message);
+    	for (Subscriber handler: event_subscribers) {
+    		handler.send_event(event, message);
     	}
-    }
-    
-    static private void send_message_to (Handler handler, Tag tag, String message) {
-        Message msgObj = handler.obtainMessage();
-        Bundle bundle = new Bundle();
-        bundle.putSerializable("tag", tag);
-        bundle.putString("message", message);
-        msgObj.setData(bundle);
-        handler.sendMessage(msgObj);
     }
     
     static private Context get_reliable_context () {
@@ -868,17 +908,6 @@ public class DAN extends Service {
     	return "Error";
     }
     
-    static public void subscribe_message (Handler handler) {
-    	if (subscribers == null) {
-    		subscribers = new HashSet<Handler>();
-    	}
-    	subscribers.add(handler);
-    }
-    
-    static public void deregister (Handler handler) {
-    	subscribers.remove(handler);
-    }
-    
     static public void register (String d_id, JSONObject profile) {
     	DAN.d_id = d_id;
     	DAN.profile = profile;
@@ -892,27 +921,30 @@ public class DAN extends Service {
     	
     	RegisterThread.start_working();
     }
-
+    
     static public void push_data (String feature, Object data) {
     	DANDataObject ary = new DANDataObject(data);
-        push_data(feature, ary);
-    }
-    
-    static private void push_data (String feature, DANDataObject data) {
     	if (!upstream_thread_pool.containsKey(feature)) {
     		UpStreamThread ust = new UpStreamThread(feature);
     		upstream_thread_pool.put(feature, ust);
     		ust.start();
     	}
     	UpStreamThread ust = upstream_thread_pool.get(feature);
-    	ust.enqueue(data);
+    	ust.enqueue(ary);
     }
     
-    static public void subscribe_data (String feature, Handler callback) {
-    	if (!downstream_thread_pool.containsKey(feature)) {
-    		DownStreamThread dst = new DownStreamThread(feature, callback);
-    		downstream_thread_pool.put(feature, dst);
-    		dst.start();
+    static public void subscribe (String feature, Subscriber subscriber) {
+    	if (feature.equals("Control_channel")) {
+        	if (event_subscribers == null) {
+        		event_subscribers = new HashSet<Subscriber>();
+        	}
+        	event_subscribers.add(subscriber);
+    	} else {
+    		if (!downstream_thread_pool.containsKey(feature)) {
+        		DownStreamThread dst = new DownStreamThread(feature, subscriber);
+        		downstream_thread_pool.put(feature, dst);
+        		dst.start();
+        	}
     	}
     }
     
@@ -922,6 +954,10 @@ public class DAN extends Service {
 			dst.stop_working();
 			downstream_thread_pool.remove(feature);
 		}
+    }
+    
+    static public void unsubcribe (Subscriber handler) {
+    	event_subscribers.remove(handler);
     }
 
     static public void deregister () {

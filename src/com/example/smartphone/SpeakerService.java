@@ -93,9 +93,9 @@ public class SpeakerService extends Service {
         	working = true;
             ATM=new AudioTrackManager();
             current_sound_Hz = 0;
-            Handler handler = new Handler () {
-            	public void handleMessage (Message msg) {
-            		DAN.DataSet ds = msg.getData().getParcelable("dataset");
+            DAN.Subscriber handler = new DAN.Subscriber () {
+            	public void event_handler (DAN.EventObject event_object) {
+            		DAN.DataSet ds = event_object.dataset;
             		try {
                 		logging(ds.timestamp +": "+ ((JSONArray)(ds.newest().data)).getInt(0));
                 		int new_sound_Hz = get_sound_rate(((JSONArray)(ds.newest().data)).getInt(0));
@@ -116,7 +116,7 @@ public class SpeakerService extends Service {
 					}
         	    }
             };
-            DAN.subscribe_data("Speaker", handler);
+            DAN.subscribe("Speaker", handler);
             
         } else {
             logging("already initialized");

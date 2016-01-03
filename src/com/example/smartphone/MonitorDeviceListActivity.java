@@ -94,9 +94,9 @@ public class MonitorDeviceListActivity extends Activity {
         });
         
 //		MonitorDataThread.set_device_list_handler(message_handler);
-        Handler handler = new Handler() {
-    	    public void handleMessage (Message msg) {
-        		DAN.DataSet ds = msg.getData().getParcelable("dataset");
+        DAN.Subscriber handler = new DAN.Subscriber() {
+    	    public void event_handler (DAN.EventObject event_object) {
+        		DAN.DataSet ds = event_object.dataset;
     			try {
 	        		Object tmp = ds.newest().data;
 	        		JSONObject obj;
@@ -112,7 +112,7 @@ public class MonitorDeviceListActivity extends Activity {
 				}
     	    }
     	};
-    	DAN.subscribe_data("Display", handler);
+    	DAN.subscribe("Display", handler);
 	}
 	
 	@Override

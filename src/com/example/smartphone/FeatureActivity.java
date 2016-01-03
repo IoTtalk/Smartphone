@@ -25,7 +25,7 @@ public class FeatureActivity extends Activity {
 		REGISTER_FAILED,
 		REGISTER_SUCCESSED,
 	}
-	static public Handler ec_status_handler;
+	static public DAN.Subscriber ec_status_handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,15 +126,15 @@ public class FeatureActivity extends Activity {
         DAN.init(this, C.dm_name);
         show_ec_status(csmapi.ENDPOINT, EC_STATUS.REGISTER_TRYING);
         
-        ec_status_handler = new Handler () {
-    	    public void handleMessage (Message msg) {
-    	        switch ((DAN.Tag)msg.getData().get("tag")) {
+        ec_status_handler = new DAN.Subscriber () {
+    	    public void event_handler (DAN.EventObject event_object) {
+    	        switch (event_object.event_tag) {
     	        case REGISTER_FAILED:
-    	        	show_ec_status(msg.getData().getString("message"), EC_STATUS.REGISTER_FAILED);
+    	        	show_ec_status(event_object.message, EC_STATUS.REGISTER_FAILED);
     	        	break;
     	        	
     	        case REGISTER_SUCCESSED:
-    	        	show_ec_status(msg.getData().getString("message"), EC_STATUS.REGISTER_SUCCESSED);
+    	        	show_ec_status(event_object.message, EC_STATUS.REGISTER_SUCCESSED);
     	        	String d_name = DAN.get_d_name();
     	        	logging("Get d_name:"+ d_name);
     				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
@@ -143,7 +143,7 @@ public class FeatureActivity extends Activity {
     	        }
     	    }
     	};
-    	DAN.subscribe_message(ec_status_handler);
+    	DAN.subscribe("Control_channel", ec_status_handler);
         
         JSONObject profile = new JSONObject();
         try {
@@ -200,7 +200,7 @@ public class FeatureActivity extends Activity {
     public void onPause () {
     	super.onPause();
     	if (isFinishing()) {
-        	DAN.deregister(ec_status_handler);
+    		DAN.unsubcribe(ec_status_handler);
     	}
     }
     
