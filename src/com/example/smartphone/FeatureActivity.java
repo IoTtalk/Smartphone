@@ -4,8 +4,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.example.smartphone.DAN.Tag;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -22,6 +20,11 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 
 public class FeatureActivity extends Activity {
+	enum EC_STATUS {
+		REGISTER_TRYING,
+		REGISTER_FAILED,
+		REGISTER_SUCCESSED,
+	}
 	static public Handler ec_status_handler;
 
     @Override
@@ -121,20 +124,17 @@ public class FeatureActivity extends Activity {
         
         // start EasyConnect Service
         DAN.init(this, C.dm_name);
+        show_ec_status(csmapi.ENDPOINT, EC_STATUS.REGISTER_TRYING);
         
         ec_status_handler = new Handler () {
     	    public void handleMessage (Message msg) {
     	        switch ((DAN.Tag)msg.getData().get("tag")) {
-    	        case REGISTER_TRYING:
-    	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
-    	        	break;
-    	        	
     	        case REGISTER_FAILED:
-    	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
+    	        	show_ec_status(msg.getData().getString("message"), EC_STATUS.REGISTER_FAILED);
     	        	break;
     	        	
     	        case REGISTER_SUCCESSED:
-    	        	show_ec_status((DAN.Tag)msg.getData().get("tag"), msg.getData().getString("message"));
+    	        	show_ec_status(msg.getData().getString("message"), EC_STATUS.REGISTER_SUCCESSED);
     	        	String d_name = DAN.get_d_name();
     	        	logging("Get d_name:"+ d_name);
     				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
@@ -168,10 +168,10 @@ public class FeatureActivity extends Activity {
 
     }
     
-    public void show_ec_status (DAN.Tag t, String host) {
+    public void show_ec_status (String host, EC_STATUS ec_status) {
 		((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
 		TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
-		switch (t) {
+		switch (ec_status) {
 		case REGISTER_TRYING:
 			tv_ec_host_status.setText("...");
 			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));

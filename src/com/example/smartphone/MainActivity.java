@@ -1,9 +1,5 @@
 package com.example.smartphone;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.app.AlertDialog;
 import android.app.TabActivity;
 import android.content.DialogInterface;
@@ -25,7 +21,7 @@ public class MainActivity extends TabActivity {
     final int MENU_ITEM_ID_DA_VERSION = 1;
     final int MENU_ITEM_REQUEST_INTERVAL = 2;
     
-	static final String version = "20151201a";
+	static final String version = "20160103a";
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {

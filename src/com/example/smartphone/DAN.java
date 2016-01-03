@@ -33,7 +33,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class DAN extends Service {
-	static public final String version = "20151217a";
+	static public final String version = "20160103a";
 	static private DAN self = null;
 	static private boolean ec_service_started;
 	static private Context creater = null;
@@ -44,7 +44,6 @@ public class DAN extends Service {
 	
 	static HashSet<Handler> subscribers = null;
 	static public enum Tag {
-		REGISTER_TRYING,
 		REGISTER_FAILED,
 		REGISTER_SUCCESSED,
 	};
@@ -223,7 +222,6 @@ public class DAN extends Service {
         		}
         		
         		boolean attach_success = false;
-        		notify_all_subscribers(Tag.REGISTER_TRYING, csmapi.ENDPOINT);
         		
 	            while ( working_permission && !attach_success ) {
 	            	if (ec_status) {
