@@ -33,7 +33,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class DAN extends Service {
-	static public final String version = "20160104a";
+	static public final String version = "20160105a";
 	
     static public class EventObject {
     	enum Type {EVENT, ODF}
@@ -502,7 +502,7 @@ public class DAN extends Service {
     	}
     }
     
-    static public class DataSet implements Parcelable {
+    static public class DataSet {
     	public String timestamp;
     	private JSONArray dataset;
     	
@@ -529,15 +529,15 @@ public class DAN extends Service {
 			}
     	}
     	
-    	public Data newest () {
+    	public Data newest () throws JSONException {
+    		return nth(0);
+    	}
+    	
+    	public Data nth (int n) throws JSONException {
     		Data ret = new Data();
-    		try {
-    			JSONArray tmp = this.dataset.getJSONArray(0);
-    			ret.timestamp = tmp.getString(0);
-	    		ret.data = tmp.getJSONArray(1);
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
+    		JSONArray tmp = this.dataset.getJSONArray(n);
+			ret.timestamp = tmp.getString(0);
+    		ret.data = tmp.getJSONArray(1);
     		return ret;
     	}
     	
@@ -557,28 +557,6 @@ public class DAN extends Service {
 			}
     		return "";
     	}
-
-		@Override
-		public int describeContents() {
-			return 0;
-		}
-
-		@Override
-		public void writeToParcel(Parcel dest, int flags) {
-			dest.writeString(this.timestamp);
-			dest.writeString(this.dataset.toString());
-		}
-		
-		public static final Parcelable.Creator<DataSet> CREATOR
-		        = new Parcelable.Creator<DataSet>() {
-		    public DataSet createFromParcel(Parcel in) {
-		        return new DataSet(in);
-		    }
-		
-		    public DataSet[] newArray(int size) {
-		        return new DataSet[size];
-		    }
-		};
     }
     
     static public class Data {
@@ -922,7 +900,7 @@ public class DAN extends Service {
     	RegisterThread.start_working();
     }
     
-    static public void push_data (String feature, Object data) {
+    static public void push (String feature, Object data) {
     	DANDataObject ary = new DANDataObject(data);
     	if (!upstream_thread_pool.containsKey(feature)) {
     		UpStreamThread ust = new UpStreamThread(feature);

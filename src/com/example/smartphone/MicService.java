@@ -108,7 +108,7 @@ public class MicService extends Service {
 	                	ary.put(buffer[i]);
 	                }
 	                data.put("data", ary);
-	                DAN.push_data("Raw-mic", data);
+	                DAN.push("Raw-mic", data);
 	                
 	                int v = 0;
 	                for (int i = 0; i < buffer.length; i++) {
@@ -130,7 +130,7 @@ public class MicService extends Service {
 	                
 	                //if (total > BLOW_ACTIVI)
 	                if ( dB >= 0 && dB <= 250 ) {
-	                	DAN.push_data("Microphone", dB * 10);
+	                	DAN.push("Microphone", dB * 10);
 	                	logging("push_data(\"Microphone\", ["+ (dB * 10) +"])");
 	                    number = 1;
 	                    tal = 1;
