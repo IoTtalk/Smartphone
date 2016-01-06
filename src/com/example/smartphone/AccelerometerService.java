@@ -94,7 +94,7 @@ public class AccelerometerService extends Service implements SensorEventListener
             data.put(data_y);
             data.put(data_z);
             DAN.push("Acceleration", data);
-            logging(String.format("push_data(%.10f, %.10f, %.10f)", data_x, data_y, data_z));
+            logging(String.format("push(%.10f, %.10f, %.10f)", data_x, data_y, data_z));
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -117,6 +117,6 @@ public class AccelerometerService extends Service implements SensorEventListener
     }
 
     private void logging (String message) {
-        Log.i(C.log_tag, "[GSensorService] " + message);
+        Log.i(C.log_tag, "[AccelerometerService] " + message);
     }
 }

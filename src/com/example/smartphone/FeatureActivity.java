@@ -23,7 +23,7 @@ public class FeatureActivity extends Activity {
 	enum EC_STATUS {
 		REGISTER_TRYING,
 		REGISTER_FAILED,
-		REGISTER_SUCCESSED,
+		REGISTER_SUCCEED,
 	}
 	static public DAN.Subscriber ec_status_handler;
 
@@ -133,8 +133,8 @@ public class FeatureActivity extends Activity {
     	        	show_ec_status(event_object.message, EC_STATUS.REGISTER_FAILED);
     	        	break;
     	        	
-    	        case REGISTER_SUCCESSED:
-    	        	show_ec_status(event_object.message, EC_STATUS.REGISTER_SUCCESSED);
+    	        case REGISTER_SUCCEED:
+    	        	show_ec_status(event_object.message, EC_STATUS.REGISTER_SUCCEED);
     	        	String d_name = DAN.get_d_name();
     	        	logging("Get d_name:"+ d_name);
     				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
@@ -182,7 +182,7 @@ public class FeatureActivity extends Activity {
 			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));
 			break;
 			
-		case REGISTER_SUCCESSED:
+		case REGISTER_SUCCEED:
 			tv_ec_host_status.setText("~");
 			tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
 			break;

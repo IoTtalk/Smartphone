@@ -34,8 +34,8 @@
     <ToggleButton
         android:id="@+id/btn_accelerometer"
 		style="@style/thin_small_toggle_button"
-		android:textOn="Accelerometer working"
-		android:textOff="Accelerometer idle"/>
+		android:textOn="Acceleration working"
+		android:textOff="Acceleration idle"/>
     
     <ToggleButton
         android:id="@+id/btn_mic"

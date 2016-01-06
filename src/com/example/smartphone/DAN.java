@@ -33,7 +33,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class DAN extends Service {
-	static public final String version = "20160105a";
+	static public final String version = "20160106a";
 	
     static public class EventObject {
     	enum Type {EVENT, ODF}
@@ -100,7 +100,7 @@ public class DAN extends Service {
 	static HashSet<Subscriber> event_subscribers = null;
 	static public enum EventType {
 		REGISTER_FAILED,
-		REGISTER_SUCCESSED,
+		REGISTER_SUCCEED,
 	};
 	
 	static private final int NOTIFICATION_ID = 1;
@@ -591,7 +591,7 @@ public class DAN extends Service {
 			ec_status_lock.acquire();
 	    	ec_status = new_ec_status;
 	    	if (ec_status) {
-	        	notify_all_subscribers(EventType.REGISTER_SUCCESSED, csmapi.ENDPOINT);
+	        	notify_all_subscribers(EventType.REGISTER_SUCCEED, csmapi.ENDPOINT);
 	    	}
 	    	logging("show notification: "+ ec_status);
 	    	Context ctx = get_reliable_context();
@@ -869,9 +869,13 @@ public class DAN extends Service {
         mac_addr_cache = wifiInf.getMacAddress().replace(":", ""); 
         return mac_addr_cache;
     }
+
+    static public String get_clean_mac_addr (String mac_addr) {
+        return mac_addr.replace(":", "");
+    }
     
     static public String get_d_id (String mac_addr) {
-        return mac_addr;
+        return get_clean_mac_addr(mac_addr);
     }
     
     static public String get_d_name () {

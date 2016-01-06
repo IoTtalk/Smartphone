@@ -21,7 +21,7 @@ public class MainActivity extends TabActivity {
     final int MENU_ITEM_ID_DA_VERSION = 1;
     final int MENU_ITEM_REQUEST_INTERVAL = 2;
     
-	static final String version = "20160105a";
+	static final String version = "20160106a";
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
