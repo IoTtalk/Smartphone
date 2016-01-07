@@ -33,30 +33,30 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class DAN extends Service {
-	static public final String version = "20160106a";
+	static public final String version = "20160107b";
 	
-    static public class EventObject {
-    	enum Type {EVENT, ODF}
-    	public Type type;
+    static public class ODFObject {
+    	enum Type {CONTROL_CHANNEL, ODF}
+    	public Type odf_type;
     	
     	// EVENT object
-    	public EventType event_tag;
+    	public EventTag event_tag;
     	public String message;
     	
     	// ODF object
     	public String feature;
     	public DataSet dataset;
     	
-    	public EventObject (EventType event_name, String message) {
-    		this.type = Type.EVENT;
+    	public ODFObject (EventTag event_name, String message) {
+    		this.odf_type = Type.CONTROL_CHANNEL;
     		this.event_tag = event_name;
     		this.message = message;
     		this.feature = null;
     		this.dataset = null;
     	}
     	
-    	public EventObject (String feature, DataSet dataset) {
-    		this.type = Type.ODF;
+    	public ODFObject (String feature, DataSet dataset) {
+    		this.odf_type = Type.ODF;
     		this.event_tag = null;
     		this.message = null;
     		this.feature = feature;
@@ -68,25 +68,25 @@ public class DAN extends Service {
         static class _Handler extends Handler {}
     	private final Handler handler = new _Handler () {
     		public void handleMessage (Message msg) {
-    			Subscriber.this.event_handler((EventObject)msg.obj);
+    			Subscriber.this.odf_handler((ODFObject)msg.obj);
     		}
     	};
     	
-    	public void send_event (EventType event, String message) {
+    	public void send_event (EventTag event, String message) {
 	        Message msgObj = handler.obtainMessage();
-	        EventObject event_object = new EventObject(event, message);
-	        msgObj.obj = event_object;
+	        ODFObject odf_object = new ODFObject(event, message);
+	        msgObj.obj = odf_object;
 	        handler.sendMessage(msgObj);
     	}
     	
     	public void send_odf (String feature, DataSet dataset) {
 	        Message msgObj = handler.obtainMessage();
-	        EventObject event_object = new EventObject(feature, dataset);
-	        msgObj.obj = event_object;
+	        ODFObject odf_object = new ODFObject(feature, dataset);
+	        msgObj.obj = odf_object;
 	        handler.sendMessage(msgObj);
     	}
 
-        public abstract void event_handler (EventObject event_object);
+        public abstract void odf_handler (ODFObject odf_object);
     }
     
 	static private DAN self = null;
@@ -98,7 +98,7 @@ public class DAN extends Service {
 	static private String mac_addr_error_prefix = "E2202";
 	
 	static HashSet<Subscriber> event_subscribers = null;
-	static public enum EventType {
+	static public enum EventTag {
 		REGISTER_FAILED,
 		REGISTER_SUCCEED,
 	};
@@ -290,7 +290,7 @@ public class DAN extends Service {
 	            	if (attach_success) {
 		            	break;
 	            	}
-	    			notify_all_subscribers(EventType.REGISTER_FAILED, csmapi.ENDPOINT);
+	    			notify_all_subscribers(EventTag.REGISTER_FAILED, csmapi.ENDPOINT);
 		    		logging("Attach failed, wait for 2000ms and try again");
 					Thread.sleep(2000);
 	            }
@@ -506,17 +506,6 @@ public class DAN extends Service {
     	public String timestamp;
     	private JSONArray dataset;
     	
-    	public DataSet (Parcel in) {
-    		this.timestamp = in.readString();
-			this.dataset = null;
-			
-			try {
-				this.dataset = new JSONArray(in.readString());
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-    	}
-    	
     	public DataSet (JSONArray in) {
 			this.timestamp = "";
 			this.dataset = null;
@@ -591,7 +580,7 @@ public class DAN extends Service {
 			ec_status_lock.acquire();
 	    	ec_status = new_ec_status;
 	    	if (ec_status) {
-	        	notify_all_subscribers(EventType.REGISTER_SUCCEED, csmapi.ENDPOINT);
+	        	notify_all_subscribers(EventTag.REGISTER_SUCCEED, csmapi.ENDPOINT);
 	    	}
 	    	logging("show notification: "+ ec_status);
 	    	Context ctx = get_reliable_context();
@@ -625,7 +614,7 @@ public class DAN extends Service {
         Log.i(log_tag, "[DAN] " + message);
     }
     
-    static private void notify_all_subscribers (EventType event, String message) {
+    static private void notify_all_subscribers (EventTag event, String message) {
     	if (event_subscribers == null) {
     		logging("Broadcast: No subscribers");
     		return;

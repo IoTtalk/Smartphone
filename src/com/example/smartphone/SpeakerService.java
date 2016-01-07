@@ -94,8 +94,8 @@ public class SpeakerService extends Service {
             ATM=new AudioTrackManager();
             current_sound_Hz = 0;
             DAN.Subscriber handler = new DAN.Subscriber () {
-            	public void event_handler (DAN.EventObject event_object) {
-            		DAN.DataSet ds = event_object.dataset;
+            	public void odf_handler (DAN.ODFObject odf_object) {
+            		DAN.DataSet ds = odf_object.dataset;
             		try {
                 		logging(ds.timestamp +": "+ ((JSONArray)(ds.newest().data)).getInt(0));
                 		int new_sound_Hz = get_sound_rate(((JSONArray)(ds.newest().data)).getInt(0));

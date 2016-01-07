@@ -95,8 +95,8 @@ public class MonitorDeviceListActivity extends Activity {
         
 //		MonitorDataThread.set_device_list_handler(message_handler);
         DAN.Subscriber handler = new DAN.Subscriber() {
-    	    public void event_handler (DAN.EventObject event_object) {
-        		DAN.DataSet ds = event_object.dataset;
+    	    public void odf_handler (DAN.ODFObject odf_object) {
+        		DAN.DataSet ds = odf_object.dataset;
     			try {
 	        		Object tmp = ds.newest().data;
 	        		JSONObject obj;

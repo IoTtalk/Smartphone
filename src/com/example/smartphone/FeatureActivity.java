@@ -127,14 +127,14 @@ public class FeatureActivity extends Activity {
         show_ec_status(csmapi.ENDPOINT, EC_STATUS.REGISTER_TRYING);
         
         ec_status_handler = new DAN.Subscriber () {
-    	    public void event_handler (DAN.EventObject event_object) {
-    	        switch (event_object.event_tag) {
+    	    public void odf_handler (DAN.ODFObject odf_object) {
+    	        switch (odf_object.event_tag) {
     	        case REGISTER_FAILED:
-    	        	show_ec_status(event_object.message, EC_STATUS.REGISTER_FAILED);
+    	        	show_ec_status(odf_object.message, EC_STATUS.REGISTER_FAILED);
     	        	break;
     	        	
     	        case REGISTER_SUCCEED:
-    	        	show_ec_status(event_object.message, EC_STATUS.REGISTER_SUCCEED);
+    	        	show_ec_status(odf_object.message, EC_STATUS.REGISTER_SUCCEED);
     	        	String d_name = DAN.get_d_name();
     	        	logging("Get d_name:"+ d_name);
     				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
