@@ -20,7 +20,7 @@ public class csmapi {
 	static public String log_tag = "csmapi";
 	static public String ENDPOINT = "http://openmtc.darkgerm.com:9999";
 	
-	static public boolean create (String d_id, JSONObject profile) {
+	static public boolean register (String d_id, JSONObject profile) {
 		try {
 	        String url = ENDPOINT +"/"+ d_id;
 			logging("[create] "+ url);
@@ -41,7 +41,7 @@ public class csmapi {
 		return false;
 	}
 
-    static public boolean delete (String d_id) {
+    static public boolean deregister (String d_id) {
 		try {
 			logging(d_id +" deleting from "+ ENDPOINT);
 			String url = ENDPOINT +"/"+ d_id;

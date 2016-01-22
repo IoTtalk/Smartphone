@@ -224,7 +224,7 @@ public class DAN extends Service {
             	if (!ec_status) {
             		csmapi.ENDPOINT = new_ec_host;
             	} else {
-            		csmapi.delete(d_id);
+            		csmapi.deregister(d_id);
             		ec_status = false;
                 	csmapi.ENDPOINT = new_ec_host;
                 	RegisterThread.start_working();
@@ -283,7 +283,7 @@ public class DAN extends Service {
 	            		break;
 	            	}
 	            	attach_lock.acquire();
-	            	attach_success = csmapi.create(d_id, profile);
+	            	attach_success = csmapi.register(d_id, profile);
             		show_ec_status_on_notification(attach_success);
             		logging("Attach result: " + csmapi.ENDPOINT +": "+ attach_success);
 	            	attach_lock.release();
@@ -329,7 +329,7 @@ public class DAN extends Service {
             RegisterThread.stop_working();
             
             ec_status = false;
-            boolean deregister_result = csmapi.delete(d_id);
+            boolean deregister_result = csmapi.deregister(d_id);
     		logging("Deregistered from EasyConnect, result: "+ deregister_result);
             
             NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
