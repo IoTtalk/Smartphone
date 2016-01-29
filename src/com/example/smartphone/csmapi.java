@@ -23,14 +23,14 @@ public class csmapi {
 	static public boolean register (String d_id, JSONObject profile) {
 		try {
 	        String url = ENDPOINT +"/"+ d_id;
-			logging("[create] "+ url);
+			logging("[register] "+ url);
 			JSONObject tmp = new JSONObject();
 			tmp.put("profile", profile);
 			http.response res = http.post(url, tmp);
 			if (res.status_code != 200) {
-				logging("[create] "+ "Response from "+ url);
-				logging("[create] "+ "Response Code: "+ res.status_code);
-				logging("[create] "+ res.body);
+				logging("[register] "+ "Response from "+ url);
+				logging("[register] "+ "Response Code: "+ res.status_code);
+				logging("[register] "+ res.body);
 			}
 	        return res.status_code == 200;
 		} catch (NullPointerException e) {
@@ -43,13 +43,13 @@ public class csmapi {
 
     static public boolean deregister (String d_id) {
 		try {
-			logging(d_id +" deleting from "+ ENDPOINT);
+			logging(d_id +" deregistering from "+ ENDPOINT);
 			String url = ENDPOINT +"/"+ d_id;
 			http.response res = http.delete(url);
 			if (res.status_code != 200) {
-				logging("[delete] "+ "Response from "+ url);
-				logging("[delete] "+ "Response Code: "+ res.status_code);
-				logging("[delete] "+ res.body);
+				logging("[deregister] "+ "Response from "+ url);
+				logging("[deregister] "+ "Response Code: "+ res.status_code);
+				logging("[deregister] "+ res.body);
 			}
 	        return res.status_code == 200;
 		} catch (NullPointerException e) {
