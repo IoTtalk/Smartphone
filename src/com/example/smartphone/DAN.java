@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
@@ -30,7 +31,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class DAN extends Service {
-    static public final String version = "20160224";
+    static public final String version = "20160323";
 
     static public class ODFObject {
         enum Type {CONTROL_CHANNEL, ODF}
@@ -112,6 +113,7 @@ public class DAN extends Service {
     static private long request_interval = 150;
     static HashMap<String, UpStreamThread> upstream_thread_pool;
     static HashMap<String, DownStreamThread> downstream_thread_pool;
+    static HashMap<String, Integer> detected_ec_heartbeat;
 
     @Override
     public IBinder onBind(Intent arg0) {
@@ -225,6 +227,7 @@ public class DAN extends Service {
                     ec_status = false;
                     csmapi.ENDPOINT = new_ec_host;
                     RegisterThread.start_working();
+                    detected_ec_heartbeat.put(new_ec_host, 0);
                 }
                 attach_lock.release();
             }
@@ -811,6 +814,7 @@ public class DAN extends Service {
         downstream_thread_pool = new HashMap<String, DownStreamThread>();
         attach_lock = new Semaphore(1);
         ec_status_lock = new Semaphore(1);
+        detected_ec_heartbeat = new HashMap<String, Integer>();
         DetectLocalECThread.start_working();
         if (on_click_action == null) {
             on_click_action = ctx.getClass();
@@ -963,5 +967,16 @@ public class DAN extends Service {
             logging("Set DAN.request_interval = "+ request_interval);
             DAN.request_interval = request_interval;
         }
+    }
+    
+    static public String[] available_ec () {
+		ArrayList<String> t = new ArrayList<String>();
+		t.add(DEFAULT_EC_HOST);
+    	if (detected_ec_heartbeat != null) {
+    		for (String i: detected_ec_heartbeat.keySet()) {
+    			t.add(i);
+    		}
+    	}
+		return t.toArray(new String[]{});
     }
 }
