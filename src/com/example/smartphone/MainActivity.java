@@ -23,7 +23,7 @@ public class MainActivity extends TabActivity {
     final int MENU_ITEM_REQUEST_INTERVAL = 2;
     final int MENU_ITEM_REREGISTER = 3;
     
-	static final String version = "20160323a";
+	static final String version = "20160325";
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -119,6 +119,7 @@ public class MainActivity extends TabActivity {
             public void onClick(DialogInterface dialog, int which) {
                 String which_ec = array_adapter.getItem(which);
                 logging("selected: "+ which_ec);
+                DAN.reregister(which_ec);
             }
         });
         dialog.create().show();

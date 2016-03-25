@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
@@ -31,7 +32,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class DAN extends Service {
-    static public final String version = "20160323";
+    static public final String version = "20160325";
 
     static public class ODFObject {
         enum Type {CONTROL_CHANNEL, ODF}
@@ -88,12 +89,11 @@ public class DAN extends Service {
     }
 
     static private DAN self = null;
-    static private boolean ec_service_started;
     static private Context creater = null;
     static private Class<? extends Context> on_click_action;
     static private String log_tag = "EasyConenct";
     static private String mac_addr_cache = null;
-    static private String mac_addr_error_prefix = "E2202";
+    static private String mac_addr_error;
 
     static HashSet<Subscriber> event_subscribers = null;
     static public enum EventTag {
@@ -102,18 +102,16 @@ public class DAN extends Service {
     };
 
     static private final int NOTIFICATION_ID = 1;
-    static private Semaphore attach_lock;
-    static final   String    DEFAULT_EC_HOST   = "http://openmtc.darkgerm.com:9999";
-    static public  int       EC_BROADCAST_PORT = 17000;
+    static private final String DEFAULT_EC_HOST = "http://openmtc.darkgerm.com:9999";
+    static public  final int EC_BROADCAST_PORT = 17000;
     static private String d_id;
     static private JSONObject profile;
-    static private Semaphore ec_status_lock;
-    static private boolean   ec_status = false;
+    static private final Semaphore ec_status_lock = new Semaphore(1);
 
     static private long request_interval = 150;
-    static HashMap<String, UpStreamThread> upstream_thread_pool;
-    static HashMap<String, DownStreamThread> downstream_thread_pool;
-    static HashMap<String, Integer> detected_ec_heartbeat;
+    static private final HashMap<String, UpStreamThread> upstream_thread_pool = new HashMap<String, UpStreamThread>();
+    static private final HashMap<String, DownStreamThread> downstream_thread_pool = new HashMap<String, DownStreamThread>();
+    static private final ConcurrentHashMap<String, Long> detected_ec_heartbeat = new ConcurrentHashMap<String, Long>();
 
     @Override
     public IBinder onBind(Intent arg0) {
@@ -124,7 +122,7 @@ public class DAN extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         logging("onStartCommand()");
         self = this;
-        show_ec_status_on_notification(ec_status);
+        show_ec_status_on_notification(SessionThread.status());
         return START_STICKY;
     }
 
@@ -138,8 +136,6 @@ public class DAN extends Service {
 
         static DatagramSocket socket;
         static boolean working_permission;
-        static String candidate_ec_host = null;
-        static int receive_count = 0;
 
         static public void start_working () {
             logging("DetectLocalECThread.start_working()");
@@ -163,7 +159,6 @@ public class DAN extends Service {
 
         public void run () {
             logging("DetectLocalECThread starts");
-            show_ec_status_on_notification(ec_status);
             try {
                 socket = new DatagramSocket(null);
                 socket.setReuseAddress(true);
@@ -176,8 +171,8 @@ public class DAN extends Service {
                     if (input_data.equals("easyconnect")) {
                         // It's easyconnect packet
                         InetAddress ec_raw_addr = packet.getAddress();
-                        String ec_addr = ec_raw_addr.getHostAddress();
-                        process_easyconnect_packet(ec_addr);
+                        String ec_endpoint = "http://"+ ec_raw_addr.getHostAddress() +":9999";
+        	            detected_ec_heartbeat.put(ec_endpoint, System.currentTimeMillis());
                     }
                 }
             } catch (SocketException e) {
@@ -186,176 +181,144 @@ public class DAN extends Service {
             } catch (IOException e) {
                 logging("IOException");
                 e.printStackTrace();
-            } catch (InterruptedException e) {
-                logging("InterruptedException");
-                e.printStackTrace();
             } finally {
                 logging("DetectLocalECThread stops");
                 working_permission = false;
                 self = null;
             }
         }
-
-        private void process_easyconnect_packet (String _) throws InterruptedException {
-            String new_ec_host = "http://" + _ +":9999";
-
-            if (csmapi.ENDPOINT.equals(DEFAULT_EC_HOST)) {
-                // we are now on default EC, and we should use local EC first
-                candidate_ec_host = new_ec_host;
-                receive_count = 10;
-            } else if (receive_count == 0 || !candidate_ec_host.equals(new_ec_host)) {
-                // we don't have any candidate host, or found another host
-                candidate_ec_host = new_ec_host;
-                receive_count = 1;
-            } else {
-                // contiguously receiving EC packet from the same host
-                receive_count += 1;
-            }
-
-            // prevent overflow
-            if (receive_count >= 10) {
-                receive_count = 10;
-            }
-
-            if (!csmapi.ENDPOINT.equals(candidate_ec_host) && receive_count >= 5) {
-                // we are using different EC host, and it's stable
-                attach_lock.acquire();
-                if (!ec_status) {
-                    csmapi.ENDPOINT = new_ec_host;
-                } else {
-                    csmapi.deregister(d_id);
-                    ec_status = false;
-                    csmapi.ENDPOINT = new_ec_host;
-                    RegisterThread.start_working();
-                    detected_ec_heartbeat.put(new_ec_host, 0);
-                }
-                attach_lock.release();
-            }
-        }
     }
-
-    static private class RegisterThread extends Thread {
-        static private RegisterThread self;
-        private RegisterThread () {}
-        private static boolean working_permission;
-        private static boolean force_register;
-
-        static public void set_force_regsiter (boolean f) {
-            force_register = f;
-        }
-
-        static public void start_working () {
-            logging("RegisterThread.start_working()");
-            if (force_register) {
-                logging("forcing register, skip ec_status checking");
-            } else if (ec_status) {
-                logging("already registered");
-                show_ec_status_on_notification(ec_status);
-                return;
-            }
-
-            if (self != null) {
-                logging("already working");
-                show_ec_status_on_notification(ec_status);
-                return;
-            }
-            working_permission = true;
-            self = new RegisterThread();
-            self.start();
-        }
-
-        static public void stop_working () {
-            logging("RegisterThread.stop_working()");
-            if (self == null) {
-                logging("Already stopped");
-                return;
-            }
-            working_permission = false;
-            self.interrupt();
-        }
-
+    
+    
+    /*
+     * SessionManager handles the session status between DAN and EasyConnect.
+     * 		``session_status`` records the status,
+     * 			and this value SHOULD NOT be true after disconnect() and before connect().
+     * 
+     * SessionManager is a Thread singleton class.
+     * 
+     * SessionManager.connect(String) register to the given EasyConnect host
+     * 		This method retries 3 times, between each retry it sleeps 1000 milliseconds
+     * 		This method is non-blocking, because it notifies subscribers in ``event_subscribers``.
+     * 
+     * SessionManager.disconnect() deregister from previous connected EasyConnect host
+     * 		This method retries 3 times, between each retry it sleeps 1000 milliseconds
+     * 		This method is blocking, because it doesn't generate events. Re-register also needs it to be blocking.
+     */
+    static private class SessionThread extends Thread {
+    	static private final int RETRY_COUNT = 3;
+    	static private final Semaphore instance_lock = new Semaphore(1);
+    	static private boolean session_status;
+    	static private SessionThread self;
+    	
+    	private final LinkedBlockingQueue<SessionCommand> command_channel =
+    			new LinkedBlockingQueue<SessionCommand>(2);
+    	
+    	private enum CommandOpCode {
+    		REGISTER, DEREGISTER
+    	}
+    	
+    	private class SessionCommand {
+    		public CommandOpCode op_code;
+    		public String ec_endpoint;
+    		public SessionCommand (CommandOpCode op_code, String ec_endpoint) {
+    			this.op_code = op_code;
+    			this.ec_endpoint = ec_endpoint;
+    		}
+    	}
+    	
+    	private SessionThread () {}
+    	
+    	static public SessionThread instance () {
+            try {
+				instance_lock.acquire();
+				if (self == null) {
+					// no session running, create one
+					self = new SessionThread();
+					self.start();
+				}
+	            instance_lock.release();
+			} catch (InterruptedException e) {
+				logging("SessionThread.instance(): InterruptedException");
+				e.printStackTrace();
+			}
+            return self;
+    	}
+    	
+    	public void connect (String ec_endpoint) {
+            logging("SessionThread.connect()");
+            SessionCommand sc = new SessionCommand(CommandOpCode.REGISTER, ec_endpoint);
+            try {
+				command_channel.add(sc);
+			} catch (IllegalStateException e) {
+				logging("SessionThread.connect(): command channel is full");
+				e.printStackTrace();
+			}
+    	}
+        
+    	public void disconnect () {
+            logging("SessionThread.disconnect()");
+            SessionCommand sc = new SessionCommand(CommandOpCode.DEREGISTER, "");
+            try {
+				command_channel.add(sc);
+			} catch (IllegalStateException e) {
+				logging("SessionThread.disconnect(): command channel is full");
+				e.printStackTrace();
+			}
+    	}
+    	
         @Override
         public void run () {
-            logging("RegisterThread starts");
-            try {
-                if (csmapi.ENDPOINT.equals(DEFAULT_EC_HOST)) {
-                    // Wait for a while before attaching to global EC
-                    Thread.sleep(2000);
-                }
-
-                boolean attach_success = false;
-
-                while ( working_permission && !attach_success ) {
-                    if ((!force_register) && ec_status) {
-                        break;
-                    }
-                    attach_lock.acquire();
-                    attach_success = csmapi.register(d_id, profile);
-                    show_ec_status_on_notification(attach_success);
-                    logging("Attach result: " + csmapi.ENDPOINT +": "+ attach_success);
-                    attach_lock.release();
-                    if (attach_success) {
-                        break;
-                    }
-                    notify_all_subscribers(EventTag.REGISTER_FAILED, csmapi.ENDPOINT);
-                    logging("Attach failed, wait for 2000ms and try again");
-                    Thread.sleep(2000);
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } finally {
-                logging("RegisterThread stops");
-                working_permission = false;
-                self = null;
-            }
+        	try {
+        		while (true) {
+        			SessionCommand sc = command_channel.take();
+        			switch (sc.op_code) {
+					case REGISTER:
+						if (session_status && csmapi.ENDPOINT.equals(sc.ec_endpoint)) {
+							logging("Cannot register to another EasyConnect before deregister from it");
+						} else {
+							csmapi.ENDPOINT = sc.ec_endpoint;
+							boolean register_success = false;
+			        		for (int i = 0; i < RETRY_COUNT; i++) {
+			                    register_success = csmapi.register(d_id, profile);
+				                session_status = register_success;
+			                    show_ec_status_on_notification(register_success);
+			                    logging("Register result: " + csmapi.ENDPOINT +": "+ register_success);
+			                    if (register_success) { break; }
+			        		}
+						}
+						break;
+						
+					case DEREGISTER:
+						boolean deregister_success = false;
+		        		for (int i = 0; i < RETRY_COUNT; i++) {
+		        			deregister_success = csmapi.deregister(d_id);
+			                session_status = deregister_success;
+		                    show_ec_status_on_notification(deregister_success);
+		                    logging("Deregister result: " + csmapi.ENDPOINT +": "+ deregister_success);
+		                    if (deregister_success) { break; }
+		        		}
+		        		// no matter what result is, set session_status to false because I've already retry many times
+		                session_status = false;
+						break;
+						
+					default:
+						break;
+        			}
+        		}
+			} catch (InterruptedException e) {
+				logging("SessionThread.run(): InterruptedException");
+				e.printStackTrace();
+			}
         }
-    }
-
-    static private class DeregisterThread extends Thread {
-        static DeregisterThread self;
-        private DeregisterThread () {}
-
-        static public void start_working () {
-            if (self != null) {
-                logging("already working");
-                show_ec_status_on_notification(ec_status);
-                return;
-            }
-            self = new DeregisterThread();
-            self.start();
-            try {
-                self.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        
+        public void kill () {
+        	this.interrupt();
         }
-
-        @Override
-        public void run () {
-            DetectLocalECThread.stop_working();
-            RegisterThread.stop_working();
-
-            ec_status = false;
-            boolean deregister_result = csmapi.deregister(d_id);
-            logging("Deregistered from EasyConnect, result: "+ deregister_result);
-
-            NotificationManager notification_manager = (NotificationManager) get_reliable_context().getSystemService(Context.NOTIFICATION_SERVICE);
-            notification_manager.cancelAll();
-
-            if (DAN.self != null) {
-                DAN.self.stopSelf();
-            }
-
-            self = null;
-            reset();
+        
+        static public boolean status () {
+        	return session_status;
         }
-    }
-
-    static private void reset () {
-        csmapi.ENDPOINT = DEFAULT_EC_HOST;
-        DAN.self = null;
-        DAN.request_interval = 150;
-        DAN.ec_service_started = false;
     }
 
     static private class UpStreamThread extends Thread {
@@ -419,7 +382,7 @@ public class DAN extends Service {
                     acc.average(buffer_count);
 
                     JSONObject data = acc.toJSONObject();
-                    if (ec_status) {
+                    if (SessionThread.status()) {
                         logging("UpStreamThread("+ feature +") push data: "+ data);
                         csmapi.push(d_id, feature, data);
                     } else {
@@ -472,7 +435,7 @@ public class DAN extends Service {
                         Thread.sleep(request_interval - (now - timestamp));
                     }
                     timestamp = System.currentTimeMillis();
-                    if (ec_status) {
+                    if (SessionThread.status()) {
                         logging("DownStreamThread("+ feature +") pull data");
                         deliver_data(csmapi.pull(d_id, feature));
                     } else {
@@ -585,16 +548,16 @@ public class DAN extends Service {
     static private void show_ec_status_on_notification (boolean new_ec_status) {
         try {
             ec_status_lock.acquire();
-            ec_status = new_ec_status;
-            if (ec_status) {
+//            ec_status = new_ec_status;
+            if (SessionThread.status()) {
                 notify_all_subscribers(EventTag.REGISTER_SUCCEED, csmapi.ENDPOINT);
             }
-            logging("show notification: "+ ec_status);
+            logging("show notification: "+ SessionThread.status());
             Context ctx = get_reliable_context();
             if (ctx == null) {
                 return;
             }
-            String text = ec_status ? csmapi.ENDPOINT : "Connecting";
+            String text = SessionThread.status() ? csmapi.ENDPOINT : "Connecting";
             ec_status_lock.release();
             NotificationManager notification_manager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
             NotificationCompat.Builder notification_builder =
@@ -801,30 +764,23 @@ public class DAN extends Service {
     // * Public API * //
     // ************** //
     static public void init (Context ctx, String device_model) {
-        if (ec_service_started) {
-            logging("DAN.init(): already started");
-            return;
-        }
         logging("DAN.init()");
-        ec_service_started = true;
         creater = ctx;
         DAN.log_tag = device_model;
         csmapi.log_tag = device_model;
-        upstream_thread_pool = new HashMap<String, UpStreamThread>();
-        downstream_thread_pool = new HashMap<String, DownStreamThread>();
-        attach_lock = new Semaphore(1);
-        ec_status_lock = new Semaphore(1);
-        detected_ec_heartbeat = new HashMap<String, Integer>();
         DetectLocalECThread.start_working();
         if (on_click_action == null) {
             on_click_action = ctx.getClass();
         }
+        
+        csmapi.ENDPOINT = DEFAULT_EC_HOST;
+        DAN.request_interval = 150;
 
         // Generate error mac address
-        Random rn = new Random();
+        final Random rn = new Random();
+        mac_addr_error = "E2202";
         for (int i = 0; i < 7; i++) {
-            int a = rn.nextInt(16);
-            mac_addr_error_prefix += "0123456789ABCDEF".charAt(a);
+            mac_addr_error += "0123456789ABCDEF".charAt(rn.nextInt(16));
         }
 
         // start this service
@@ -843,7 +799,7 @@ public class DAN extends Service {
             return mac_addr_cache;
         }
 
-        mac_addr_cache = mac_addr_error_prefix;
+        mac_addr_cache = mac_addr_error;
         Context ctx = get_reliable_context();
 
         if (ctx == null) {
@@ -902,8 +858,7 @@ public class DAN extends Service {
             }
         }
 
-        RegisterThread.set_force_regsiter(force_register);
-        RegisterThread.start_working();
+        SessionThread.instance().connect(csmapi.ENDPOINT);
     }
 
     static public void push (String feature, Object data) {
@@ -955,7 +910,8 @@ public class DAN extends Service {
                 downstream_thread_pool.get(feature).stop_working();
             }
         }
-        DeregisterThread.start_working();
+
+        SessionThread.instance().disconnect();
     }
 
     static public long get_request_interval () {
@@ -978,5 +934,9 @@ public class DAN extends Service {
     		}
     	}
 		return t.toArray(new String[]{});
+    }
+    
+    static public void reregister (String ec_endpoint) {
+    	logging("reregister to "+ ec_endpoint);
     }
 }
