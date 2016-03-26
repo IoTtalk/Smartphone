@@ -43,8 +43,8 @@ public class csmapi {
 
     static public boolean deregister (String d_id) {
 		try {
-			logging(d_id +" deregistering from "+ ENDPOINT);
 			String url = ENDPOINT +"/"+ d_id;
+			logging("[deregister] "+ url);
 			http.response res = http.delete(url);
 			if (res.status_code != 200) {
 				logging("[deregister] "+ "Response from "+ url);

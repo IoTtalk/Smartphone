@@ -95,7 +95,7 @@ public class DAN extends Service {
     static private String mac_addr_cache = null;
     static private String mac_addr_error;
 
-    static HashSet<Subscriber> event_subscribers = null;
+    static private final HashSet<Subscriber> event_subscribers = new HashSet<Subscriber>();
     static public enum EventTag {
         REGISTER_FAILED,
         REGISTER_SUCCEED,
@@ -104,9 +104,9 @@ public class DAN extends Service {
     static private final int NOTIFICATION_ID = 1;
     static private final String DEFAULT_EC_HOST = "http://openmtc.darkgerm.com:9999";
     static public  final int EC_BROADCAST_PORT = 17000;
+    static private final Long HEART_BEAT_DEAD_MILLISECOND = 3000l;
     static private String d_id;
     static private JSONObject profile;
-    static private final Semaphore ec_status_lock = new Semaphore(1);
 
     static private long request_interval = 150;
     static private final HashMap<String, UpStreamThread> upstream_thread_pool = new HashMap<String, UpStreamThread>();
@@ -122,7 +122,6 @@ public class DAN extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         logging("onStartCommand()");
         self = this;
-        show_ec_status_on_notification(SessionThread.status());
         return START_STICKY;
     }
 
@@ -198,22 +197,25 @@ public class DAN extends Service {
      * SessionManager is a Thread singleton class.
      * 
      * SessionManager.connect(String) register to the given EasyConnect host
-     * 		This method retries 3 times, between each retry it sleeps 1000 milliseconds
+     * 		This method retries 3 times, between each retry it sleeps 2000 milliseconds
      * 		This method is non-blocking, because it notifies subscribers in ``event_subscribers``.
      * 
      * SessionManager.disconnect() deregister from previous connected EasyConnect host
-     * 		This method retries 3 times, between each retry it sleeps 1000 milliseconds
+     * 		This method retries 3 times, between each retry it sleeps 2000 milliseconds
      * 		This method is blocking, because it doesn't generate events. Re-register also needs it to be blocking.
      */
     static private class SessionThread extends Thread {
     	static private final int RETRY_COUNT = 3;
-    	static private final int RETRY_INTERVAL = 1000;
+    	static private final int RETRY_INTERVAL = 2000;
     	static private final Semaphore instance_lock = new Semaphore(1);
     	static private boolean session_status;
     	static private SessionThread self;
     	
     	private final LinkedBlockingQueue<SessionCommand> command_channel =
     			new LinkedBlockingQueue<SessionCommand>();
+    	
+    	private final LinkedBlockingQueue<Integer> response_channel =
+    			new LinkedBlockingQueue<Integer>();
     	
     	private enum CommandOpCode {
     		REGISTER, DEREGISTER
@@ -262,8 +264,12 @@ public class DAN extends Service {
             SessionCommand sc = new SessionCommand(CommandOpCode.DEREGISTER, "");
             try {
 				command_channel.add(sc);
+				response_channel.take();
 			} catch (IllegalStateException e) {
 				logging("SessionThread.disconnect(): command channel is full");
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				logging("SessionThread.disconnect(): response_channel is interrupted");
 				e.printStackTrace();
 			}
     	}
@@ -280,33 +286,44 @@ public class DAN extends Service {
 							logging("Cannot register to another EasyConnect before deregister from it");
 						} else {
 							csmapi.ENDPOINT = sc.ec_endpoint;
-							boolean register_success = false;
 			        		for (int i = 0; i < RETRY_COUNT; i++) {
-			                    register_success = csmapi.register(d_id, profile);
-				                session_status = register_success;
-			                    show_ec_status_on_notification(register_success);
-			                    logging("Register result: " + csmapi.ENDPOINT +": "+ register_success);
-			                    if (register_success) { break; }
-								logging("Sleep for "+ RETRY_INTERVAL +"milliseconds");
+			        			session_status = csmapi.register(d_id, profile);
+			                    logging("Registeration result: " + csmapi.ENDPOINT +": "+ session_status);
+			                    if (session_status) {
+			                    	broadcast_control_message(EventTag.REGISTER_SUCCEED, csmapi.ENDPOINT);
+			                    	break;
+			                    } else {
+			                    	broadcast_control_message(EventTag.REGISTER_FAILED, csmapi.ENDPOINT);
+			                    }
+								logging("Wait "+ RETRY_INTERVAL +" milliseconds before retry");
 			                    Thread.sleep(RETRY_INTERVAL);
+			        		}
+			        		if (!session_status) {
+			        			logging("Registeration result: Give up");
 			        		}
 						}
 						break;
 						
 					case DEREGISTER:
 						logging("Deregistering from "+ csmapi.ENDPOINT);
-						boolean deregister_success = false;
-		        		for (int i = 0; i < RETRY_COUNT; i++) {
-		        			deregister_success = csmapi.deregister(d_id);
-			                session_status = deregister_success;
-		                    show_ec_status_on_notification(deregister_success);
-		                    logging("Deregister result: " + csmapi.ENDPOINT +": "+ deregister_success);
-		                    if (deregister_success) { break; }
-							logging("Sleep for "+ RETRY_INTERVAL +"milliseconds");
-		                    Thread.sleep(RETRY_INTERVAL);
-		        		}
-		        		// no matter what result is, set session_status to false because I've already retry many times
-		                session_status = false;
+						if (!session_status) {
+							logging("Not registered to any EC, abort");
+						} else {
+							boolean deregister_success = false;
+			        		for (int i = 0; i < RETRY_COUNT; i++) {
+			        			deregister_success = csmapi.deregister(d_id);
+			                    logging("Deregisteration result: " + csmapi.ENDPOINT +": "+ deregister_success);
+			                    if (deregister_success) { break; }
+								logging("Wait "+ RETRY_INTERVAL +" milliseconds before retry");
+			                    Thread.sleep(RETRY_INTERVAL);
+			        		}
+			        		if (!deregister_success) {
+			        			logging("Deregisteration result: Give up");
+			        		}
+			        		// no matter what result is, set session_status to false because I've already retry several times
+			                session_status = false;
+						}
+		                response_channel.add(0);
 						break;
 						
 					default:
@@ -552,50 +569,39 @@ public class DAN extends Service {
         return false;
     }
 
-    static private void show_ec_status_on_notification (boolean new_ec_status) {
-        try {
-            ec_status_lock.acquire();
-//            ec_status = new_ec_status;
-            if (SessionThread.status()) {
-                notify_all_subscribers(EventTag.REGISTER_SUCCEED, csmapi.ENDPOINT);
-            }
-            logging("show notification: "+ SessionThread.status());
-            Context ctx = get_reliable_context();
-            if (ctx == null) {
-                return;
-            }
-            String text = SessionThread.status() ? csmapi.ENDPOINT : "Connecting";
-            ec_status_lock.release();
-            NotificationManager notification_manager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-            NotificationCompat.Builder notification_builder =
-                    new NotificationCompat.Builder(ctx)
-                            .setSmallIcon(R.drawable.ic_launcher)
-                            .setContentTitle(log_tag)
-                            .setContentText(text);
-
-            PendingIntent pending_intent = PendingIntent.getActivity(
-                    ctx,
-                    0,
-                    new Intent(ctx, on_click_action),
-                    PendingIntent.FLAG_UPDATE_CURRENT
-            );
-
-            notification_builder.setContentIntent(pending_intent);
-            notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    static private void show_notification (boolean new_ec_status) {
+        if (SessionThread.status()) {
+            broadcast_control_message(EventTag.REGISTER_SUCCEED, csmapi.ENDPOINT);
         }
+        logging("show notification: "+ SessionThread.status());
+        Context ctx = get_reliable_context();
+        if (ctx == null) {
+            return;
+        }
+        String text = SessionThread.status() ? csmapi.ENDPOINT : "Connecting";
+        NotificationManager notification_manager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationCompat.Builder notification_builder =
+                new NotificationCompat.Builder(ctx)
+                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setContentTitle(log_tag)
+                        .setContentText(text);
+
+        PendingIntent pending_intent = PendingIntent.getActivity(
+                ctx,
+                0,
+                new Intent(ctx, on_click_action),
+                PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        notification_builder.setContentIntent(pending_intent);
+        notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
     }
 
     static private void logging (String message) {
         Log.i(log_tag, "[DAN] " + message);
     }
 
-    static private void notify_all_subscribers (EventTag event, String message) {
-        if (event_subscribers == null) {
-            logging("Broadcast: No subscribers");
-            return;
-        }
+    static private void broadcast_control_message (EventTag event, String message) {
         for (Subscriber handler: event_subscribers) {
             handler.send_event(event, message);
         }
@@ -887,9 +893,6 @@ public class DAN extends Service {
 
     static public void subscribe (String feature, Subscriber subscriber) {
         if (feature.equals("Control_channel")) {
-            if (event_subscribers == null) {
-                event_subscribers = new HashSet<Subscriber>();
-            }
             event_subscribers.add(subscriber);
         } else {
             if (!downstream_thread_pool.containsKey(feature)) {
@@ -941,11 +944,11 @@ public class DAN extends Service {
     static public String[] available_ec () {
 		ArrayList<String> t = new ArrayList<String>();
 		t.add(DEFAULT_EC_HOST);
-    	if (detected_ec_heartbeat != null) {
-    		for (String i: detected_ec_heartbeat.keySet()) {
-    			t.add(i);
-    		}
-    	}
+		for (String i: detected_ec_heartbeat.keySet()) {
+			if (System.currentTimeMillis() - detected_ec_heartbeat.get(i) < HEART_BEAT_DEAD_MILLISECOND) {
+				t.add(i);
+			}
+		}
 		return t.toArray(new String[]{});
     }
 }

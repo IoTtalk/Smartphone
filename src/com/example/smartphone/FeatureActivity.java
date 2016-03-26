@@ -20,11 +20,6 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 
 public class FeatureActivity extends Activity {
-	enum EC_STATUS {
-		REGISTER_TRYING,
-		REGISTER_FAILED,
-		REGISTER_SUCCEED,
-	}
 	static public DAN.Subscriber ec_status_handler;
 
     @Override
@@ -124,17 +119,16 @@ public class FeatureActivity extends Activity {
         
         // start EasyConnect Service
         DAN.init(this, C.dm_name);
-        show_ec_status(csmapi.ENDPOINT, EC_STATUS.REGISTER_TRYING);
         
         ec_status_handler = new DAN.Subscriber () {
     	    public void odf_handler (DAN.ODFObject odf_object) {
     	        switch (odf_object.event_tag) {
     	        case REGISTER_FAILED:
-    	        	show_ec_status(odf_object.message, EC_STATUS.REGISTER_FAILED);
+    	        	show_ec_status(odf_object.message, odf_object.event_tag);
     	        	break;
     	        	
     	        case REGISTER_SUCCEED:
-    	        	show_ec_status(odf_object.message, EC_STATUS.REGISTER_SUCCEED);
+    	        	show_ec_status(odf_object.message, odf_object.event_tag);
     	        	String d_name = DAN.get_d_name();
     	        	logging("Get d_name:"+ d_name);
     				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
@@ -162,32 +156,30 @@ public class FeatureActivity extends Activity {
 		}
     	
     	String d_name = DAN.get_d_name();
-    	logging("Get d_name:"+ d_name);
+    	logging("Get d_name: "+ d_name);
 		TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
 		tv_d_name.setText(d_name);
 
     }
     
-    public void show_ec_status (String host, EC_STATUS ec_status) {
+    public void show_ec_status (String host, DAN.EventTag ec_status) {
 		((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
 		TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
+		String status_text = "";
+		int status_color = Color.rgb(0, 0, 0);
 		switch (ec_status) {
-		case REGISTER_TRYING:
-			tv_ec_host_status.setText("...");
-			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));
-			break;
-		
 		case REGISTER_FAILED:
-			tv_ec_host_status.setText("!");
-			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));
+			status_text = "!";
+			status_color = Color.rgb(128, 0, 0);
 			break;
 			
 		case REGISTER_SUCCEED:
-			tv_ec_host_status.setText("~");
-			tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
+			status_text = "~";
+			status_color = Color.rgb(0, 128, 0);
 			break;
-			
 		}
+		tv_ec_host_status.setText(status_text);
+		tv_ec_host_status.setTextColor(status_color);
 
     }
     
