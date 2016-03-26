@@ -32,7 +32,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 public class DAN extends Service {
-    static public final String version = "20160325";
+    static public final String version = "20160326";
 
     static public class ODFObject {
         enum Type {CONTROL_CHANNEL, ODF}
@@ -207,12 +207,13 @@ public class DAN extends Service {
      */
     static private class SessionThread extends Thread {
     	static private final int RETRY_COUNT = 3;
+    	static private final int RETRY_INTERVAL = 1000;
     	static private final Semaphore instance_lock = new Semaphore(1);
     	static private boolean session_status;
     	static private SessionThread self;
     	
     	private final LinkedBlockingQueue<SessionCommand> command_channel =
-    			new LinkedBlockingQueue<SessionCommand>(2);
+    			new LinkedBlockingQueue<SessionCommand>();
     	
     	private enum CommandOpCode {
     		REGISTER, DEREGISTER
@@ -274,6 +275,7 @@ public class DAN extends Service {
         			SessionCommand sc = command_channel.take();
         			switch (sc.op_code) {
 					case REGISTER:
+						logging("Registering to "+ sc.ec_endpoint);
 						if (session_status && csmapi.ENDPOINT.equals(sc.ec_endpoint)) {
 							logging("Cannot register to another EasyConnect before deregister from it");
 						} else {
@@ -285,11 +287,14 @@ public class DAN extends Service {
 			                    show_ec_status_on_notification(register_success);
 			                    logging("Register result: " + csmapi.ENDPOINT +": "+ register_success);
 			                    if (register_success) { break; }
+								logging("Sleep for "+ RETRY_INTERVAL +"milliseconds");
+			                    Thread.sleep(RETRY_INTERVAL);
 			        		}
 						}
 						break;
 						
 					case DEREGISTER:
+						logging("Deregistering from "+ csmapi.ENDPOINT);
 						boolean deregister_success = false;
 		        		for (int i = 0; i < RETRY_COUNT; i++) {
 		        			deregister_success = csmapi.deregister(d_id);
@@ -297,6 +302,8 @@ public class DAN extends Service {
 		                    show_ec_status_on_notification(deregister_success);
 		                    logging("Deregister result: " + csmapi.ENDPOINT +": "+ deregister_success);
 		                    if (deregister_success) { break; }
+							logging("Sleep for "+ RETRY_INTERVAL +"milliseconds");
+		                    Thread.sleep(RETRY_INTERVAL);
 		        		}
 		        		// no matter what result is, set session_status to false because I've already retry many times
 		                session_status = false;
@@ -844,11 +851,11 @@ public class DAN extends Service {
     }
 
     static public void register (String d_id, JSONObject profile) {
-        register(d_id, profile, false);
+        register(csmapi.ENDPOINT, d_id, profile);
     }
-
-    static public void register (String d_id, JSONObject profile, boolean force_register) {
-        DAN.d_id = d_id;
+    
+    static public void register (String ec_endpoint, String d_id, JSONObject profile) {
+    	DAN.d_id = d_id;
         DAN.profile = profile;
         if (!DAN.profile.has("is_sim")) {
             try {
@@ -859,6 +866,12 @@ public class DAN extends Service {
         }
 
         SessionThread.instance().connect(csmapi.ENDPOINT);
+    }
+    
+    static public void reregister (String ec_endpoint) {
+    	logging("reregister to "+ ec_endpoint);
+        SessionThread.instance().disconnect();
+        SessionThread.instance().connect(ec_endpoint);
     }
 
     static public void push (String feature, Object data) {
@@ -934,9 +947,5 @@ public class DAN extends Service {
     		}
     	}
 		return t.toArray(new String[]{});
-    }
-    
-    static public void reregister (String ec_endpoint) {
-    	logging("reregister to "+ ec_endpoint);
     }
 }
