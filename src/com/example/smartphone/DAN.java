@@ -9,7 +9,6 @@ import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
@@ -18,20 +17,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.content.Context;
-import android.content.Intent;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Message;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
-public class DAN extends Service {
+public class DAN {
     static public final String version = "20160326";
 
     static public class ODFObject {
@@ -88,12 +78,7 @@ public class DAN extends Service {
         public abstract void odf_handler (ODFObject odf_object);
     }
 
-    static private DAN self = null;
-    static private Context creater = null;
-    static private Class<? extends Context> on_click_action;
-    static private String log_tag = "EasyConenct";
-    static private String mac_addr_cache = null;
-    static private String mac_addr_error;
+    static private String log_tag = "DAN";
 
     static private final HashSet<Subscriber> event_subscribers = new HashSet<Subscriber>();
     static public enum EventTag {
@@ -101,10 +86,10 @@ public class DAN extends Service {
         REGISTER_SUCCEED,
     };
 
-    static private final int NOTIFICATION_ID = 1;
     static private final String DEFAULT_EC_HOST = "http://openmtc.darkgerm.com:9999";
     static public  final int EC_BROADCAST_PORT = 17000;
     static private final Long HEART_BEAT_DEAD_MILLISECOND = 3000l;
+    static private boolean initialized;
     static private String d_id;
     static private JSONObject profile;
 
@@ -112,18 +97,6 @@ public class DAN extends Service {
     static private final HashMap<String, UpStreamThread> upstream_thread_pool = new HashMap<String, UpStreamThread>();
     static private final HashMap<String, DownStreamThread> downstream_thread_pool = new HashMap<String, DownStreamThread>();
     static private final ConcurrentHashMap<String, Long> detected_ec_heartbeat = new ConcurrentHashMap<String, Long>();
-
-    @Override
-    public IBinder onBind(Intent arg0) {
-        return null;
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        logging("onStartCommand()");
-        self = this;
-        return START_STICKY;
-    }
 
     // *********** //
     // * Threads * //
@@ -249,7 +222,7 @@ public class DAN extends Service {
     	}
     	
     	public void connect (String ec_endpoint) {
-            logging("SessionThread.connect()");
+            logging("SessionThread.connect("+ ec_endpoint +")");
             SessionCommand sc = new SessionCommand(CommandOpCode.REGISTER, ec_endpoint);
             try {
 				command_channel.add(sc);
@@ -282,7 +255,7 @@ public class DAN extends Service {
         			switch (sc.op_code) {
 					case REGISTER:
 						logging("Registering to "+ sc.ec_endpoint);
-						if (session_status && csmapi.ENDPOINT.equals(sc.ec_endpoint)) {
+						if (session_status && !csmapi.ENDPOINT.equals(sc.ec_endpoint)) {
 							logging("Cannot register to another EasyConnect before deregister from it");
 						} else {
 							csmapi.ENDPOINT = sc.ec_endpoint;
@@ -569,34 +542,6 @@ public class DAN extends Service {
         return false;
     }
 
-    static private void show_notification (boolean new_ec_status) {
-        if (SessionThread.status()) {
-            broadcast_control_message(EventTag.REGISTER_SUCCEED, csmapi.ENDPOINT);
-        }
-        logging("show notification: "+ SessionThread.status());
-        Context ctx = get_reliable_context();
-        if (ctx == null) {
-            return;
-        }
-        String text = SessionThread.status() ? csmapi.ENDPOINT : "Connecting";
-        NotificationManager notification_manager = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationCompat.Builder notification_builder =
-                new NotificationCompat.Builder(ctx)
-                        .setSmallIcon(R.drawable.ic_launcher)
-                        .setContentTitle(log_tag)
-                        .setContentText(text);
-
-        PendingIntent pending_intent = PendingIntent.getActivity(
-                ctx,
-                0,
-                new Intent(ctx, on_click_action),
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
-
-        notification_builder.setContentIntent(pending_intent);
-        notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
-    }
-
     static private void logging (String message) {
         Log.i(log_tag, "[DAN] " + message);
     }
@@ -605,14 +550,6 @@ public class DAN extends Service {
         for (Subscriber handler: event_subscribers) {
             handler.send_event(event, message);
         }
-    }
-
-    static private Context get_reliable_context () {
-        if (self == null) {
-            logging("DAN Service is null, use creater instead");
-            return creater;
-        }
-        return self;
     }
 
     static private class DANDataObject {
@@ -776,64 +713,19 @@ public class DAN extends Service {
     // ************** //
     // * Public API * //
     // ************** //
-    static public void init (Context ctx, String device_model) {
+    static public void init (String log_tag) {
         logging("DAN.init()");
-        creater = ctx;
-        DAN.log_tag = device_model;
-        csmapi.log_tag = device_model;
-        DetectLocalECThread.start_working();
-        if (on_click_action == null) {
-            on_click_action = ctx.getClass();
+        if (initialized) {
+        	logging("Already initialized");
+        	return;
         }
+        DAN.log_tag = log_tag;
+        csmapi.log_tag = log_tag;
+        DetectLocalECThread.start_working();
         
         csmapi.ENDPOINT = DEFAULT_EC_HOST;
         DAN.request_interval = 150;
-
-        // Generate error mac address
-        final Random rn = new Random();
-        mac_addr_error = "E2202";
-        for (int i = 0; i < 7; i++) {
-            mac_addr_error += "0123456789ABCDEF".charAt(rn.nextInt(16));
-        }
-
-        // start this service
-        Intent intent = new Intent(ctx, DAN.class);
-        ctx.getApplicationContext().startService(intent);
-    }
-
-    static public void set_on_click_action (Class<? extends Context> c) {
-        on_click_action = c;
-    }
-
-    static public String get_mac_addr () {
-        logging("get_mac_addr()");
-        if (mac_addr_cache != null) {
-            logging("We have mac address cache: "+ mac_addr_cache);
-            return mac_addr_cache;
-        }
-
-        mac_addr_cache = mac_addr_error;
-        Context ctx = get_reliable_context();
-
-        if (ctx == null) {
-            logging("Oops, we have no reliable context");
-            return mac_addr_cache;
-        }
-
-        WifiManager wifiMan = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
-        if (wifiMan == null) {
-            logging("Cannot get WiFiManager system service");
-            return mac_addr_cache;
-        }
-
-        WifiInfo wifiInf = wifiMan.getConnectionInfo();
-        if (wifiInf == null) {
-            logging("Cannot get connection info");
-            return mac_addr_cache;
-        }
-
-        mac_addr_cache = wifiInf.getMacAddress().replace(":", "");
-        return mac_addr_cache;
+        initialized = true;
     }
 
     static public String get_clean_mac_addr (String mac_addr) {
@@ -916,18 +808,41 @@ public class DAN extends Service {
     }
 
     static public void deregister () {
+        SessionThread.instance().disconnect();
+    }
+    
+    static public void shutdown () {
+    	logging("DAN.shutdown()");
         if (upstream_thread_pool != null) {
             for (String feature: upstream_thread_pool.keySet()) {
-                upstream_thread_pool.get(feature).stop_working();
+                UpStreamThread t = upstream_thread_pool.get(feature);
+                t.stop_working();
+                try {
+					t.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
             }
         }
         if (downstream_thread_pool != null) {
             for (String feature: downstream_thread_pool.keySet()) {
-                downstream_thread_pool.get(feature).stop_working();
+                DownStreamThread t = downstream_thread_pool.get(feature);
+                t.stop_working();
+                try {
+					t.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
             }
         }
-
-        SessionThread.instance().disconnect();
+    	DetectLocalECThread.stop_working();
+    	SessionThread.instance().kill();
+    	try {
+			SessionThread.instance().join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+    	initialized = false;
     }
 
     static public long get_request_interval () {

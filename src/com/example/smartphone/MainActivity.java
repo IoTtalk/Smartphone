@@ -44,8 +44,6 @@ public class MainActivity extends TabActivity {
         tabspec.setIndicator("Monitor");
         tabspec.setContent(new Intent(this, MonitorDeviceListActivity.class));
         tabHost.addTab(tabspec);
-        
-        DAN.set_on_click_action(MainActivity.class);
     }
     
     @Override
@@ -103,8 +101,6 @@ public class MainActivity extends TabActivity {
 
         dialog.create().show();
     }
-    
-
 
     private void show_selection_dialog (String title, String[] available_ec) {
         AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
