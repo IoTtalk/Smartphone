@@ -130,22 +130,27 @@ public class FeatureActivity extends Activity {
         DAN.init(C.dm_name);
         
         ec_status_handler = new DAN.Subscriber () {
-    	    public void odf_handler (DAN.ODFObject odf_object) {
-    	        switch (odf_object.event_tag) {
-    	        case REGISTER_FAILED:
-    	        	show_ec_status_on_ui(odf_object.message, false);
-    	        	show_ec_status_on_notification(odf_object.message, false);
-    	        	break;
-    	        	
-    	        case REGISTER_SUCCEED:
-    	        	show_ec_status_on_ui(odf_object.message, true);
-    	        	show_ec_status_on_notification(odf_object.message, true);
-    	        	String d_name = DAN.get_d_name();
-    	        	logging("Get d_name:"+ d_name);
-    				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
-    				tv_d_name.setText(d_name);
-    				break;
-    	        }
+    	    public void odf_handler (final DAN.ODFObject odf_object) {
+    	    	runOnUiThread(new Thread () {
+    	    		@Override
+    	    		public void run () {
+	    	    		switch (odf_object.event_tag) {
+	        	        case REGISTER_FAILED:
+	        	        	show_ec_status_on_ui(odf_object.message, false);
+	        	        	show_ec_status_on_notification(odf_object.message, false);
+	        	        	break;
+	        	        	
+	        	        case REGISTER_SUCCEED:
+	        	        	show_ec_status_on_ui(odf_object.message, true);
+	        	        	show_ec_status_on_notification(odf_object.message, true);
+	        	        	String d_name = DAN.get_d_name();
+	        	        	logging("Get d_name:"+ d_name);
+	        				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
+	        				tv_d_name.setText(d_name);
+	        				break;
+	        	        }
+    	    		}
+    	    	});
     	    }
     	};
     	DAN.subscribe("Control_channel", ec_status_handler);

@@ -17,8 +17,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 
 public class DAN {
@@ -54,25 +52,14 @@ public class DAN {
     }
 
     static public abstract class Subscriber {
-        static class _Handler extends Handler {}
-        private final Handler handler = new _Handler () {
-            public void handleMessage (Message msg) {
-                Subscriber.this.odf_handler((ODFObject)msg.obj);
-            }
-        };
-
         public void send_event (EventTag event, String message) {
-            Message msgObj = handler.obtainMessage();
             ODFObject odf_object = new ODFObject(event, message);
-            msgObj.obj = odf_object;
-            handler.sendMessage(msgObj);
+            odf_handler(odf_object);
         }
 
         public void send_odf (String feature, DataSet dataset) {
-            Message msgObj = handler.obtainMessage();
             ODFObject odf_object = new ODFObject(feature, dataset);
-            msgObj.obj = odf_object;
-            handler.sendMessage(msgObj);
+            odf_handler(odf_object);
         }
 
         public abstract void odf_handler (ODFObject odf_object);

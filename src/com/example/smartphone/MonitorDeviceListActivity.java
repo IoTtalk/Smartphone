@@ -106,7 +106,12 @@ public class MonitorDeviceListActivity extends Activity {
 	        			obj = (JSONObject)tmp;
 	        		}
 					newest_raw_data_copy = obj;
-					update_index();
+					runOnUiThread(new Thread () {
+						@Override
+						public void run () {
+							update_index();
+						}
+					});
 				} catch (JSONException e) {
 					e.printStackTrace();
 				}
