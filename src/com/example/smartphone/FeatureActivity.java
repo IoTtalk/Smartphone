@@ -7,6 +7,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -16,7 +17,6 @@ import android.graphics.Color;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -202,8 +202,8 @@ public class FeatureActivity extends Activity {
     private void show_ec_status_on_notification (String host, boolean status) {
         String text = status ? host : "Connecting";
         NotificationManager notification_manager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationCompat.Builder notification_builder =
-                new NotificationCompat.Builder(this)
+        Notification.Builder notification_builder =
+                new Notification.Builder(this)
                         .setSmallIcon(R.drawable.ic_launcher)
                         .setContentTitle(C.dm_name)
                         .setContentText(text);
