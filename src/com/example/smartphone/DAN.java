@@ -102,42 +102,62 @@ public class DAN {
     // * Threads * //
     // *********** //
 
-    static private class DetectLocalECThread extends Thread {
-        static DetectLocalECThread self = null;
-        private DetectLocalECThread () {}
-
-        static DatagramSocket socket;
-        static boolean working_permission;
-
-        static public void start_working () {
-            logging("DetectLocalECThread.start_working()");
-            if (self != null) {
-                logging("already working");
-                return;
-            }
-            working_permission = true;
-            self = new DetectLocalECThread();
-            self.start();
+    /*
+     * SearchLANECThread searches EC in the same LAN by receiving UDP broadcast packets
+     * 
+     * SearchLANECThread is a Thread singleton class
+     * SearchLANECThread.instance() returns the singleton instance
+     * 		The instance is created AND RUN after first call
+     * 
+     * SearchLANECThread.kill() stops the thread and cleans the singleton instance
+     */
+    static private class SearchLANECThread extends Thread {
+        static private SearchLANECThread self = null;
+        static private final Semaphore instance_lock = new Semaphore(1);
+        
+        private DatagramSocket socket;
+        
+        private SearchLANECThread () {}
+        
+        static public SearchLANECThread instance () {
+        	try {
+				instance_lock.acquire();
+	        	if (self == null) {
+	                logging("SearchLANECThread.instance(): create instance");
+	        		self = new SearchLANECThread();
+	                self.start();
+	        	}
+	        	instance_lock.release();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+        	return self;
         }
 
-        static public void stop_working () {
-            logging("DetectLocalECThread.stop_working()");
+        public void kill () {
+            logging("SearchLANECThread.kill()");
             if (self == null) {
-                logging("Already stopped");
+            	logging("SearchLANECThread.kill(): not running, skip");
                 return;
             }
-            socket.close();
+            self.socket.close();
+            try {
+				self.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+            self = null;
+        	logging("SearchLANECThread.kill(): singleton cleaned");
         }
 
         public void run () {
-            logging("DetectLocalECThread starts");
             try {
                 socket = new DatagramSocket(null);
                 socket.setReuseAddress(true);
                 socket.bind(new InetSocketAddress("0.0.0.0", DAN.EC_BROADCAST_PORT));
                 byte[] lmessage = new byte[20];
                 DatagramPacket packet = new DatagramPacket(lmessage, lmessage.length);
-                while (working_permission) {
+                while (true) {
                     socket.receive(packet);
                     String input_data = new String( lmessage, 0, packet.getLength() );
                     if (input_data.equals("easyconnect")) {
@@ -148,15 +168,11 @@ public class DAN {
                     }
                 }
             } catch (SocketException e) {
-                logging("SocketException");
+                logging("SearchLANECThread: SocketException");
                 e.printStackTrace();
             } catch (IOException e) {
-                logging("IOException");
+                logging("SearchLANECThread: IOException");
                 e.printStackTrace();
-            } finally {
-                logging("DetectLocalECThread stops");
-                working_permission = false;
-                self = null;
             }
         }
     }
@@ -168,14 +184,18 @@ public class DAN {
      * 			and this value SHOULD NOT be true after disconnect() and before connect().
      * 
      * SessionManager is a Thread singleton class.
+     * SessionManager.instance() returns the singleton instance.
+     * 		The instance is created AND RUN after first call
      * 
-     * SessionManager.connect(String) register to the given EasyConnect host
+     * SessionManager.connect(String) registers to the given EasyConnect host
      * 		This method retries 3 times, between each retry it sleeps 2000 milliseconds
      * 		This method is non-blocking, because it notifies subscribers in ``event_subscribers``.
      * 
-     * SessionManager.disconnect() deregister from previous connected EasyConnect host
+     * SessionManager.disconnect() deregisters from previous connected EasyConnect host
      * 		This method retries 3 times, between each retry it sleeps 2000 milliseconds
      * 		This method is blocking, because it doesn't generate events. Re-register also needs it to be blocking.
+     * 
+     * SessionManager.kill() stops the thread and cleans the singleton instance
      */
     static private class SessionThread extends Thread {
     	static private final int RETRY_COUNT = 3;
@@ -209,7 +229,7 @@ public class DAN {
             try {
 				instance_lock.acquire();
 				if (self == null) {
-					// no session running, create one
+	                logging("SessionThread.instance(): create instance");
 					self = new SessionThread();
 					self.start();
 				}
@@ -310,6 +330,11 @@ public class DAN {
         }
         
         public void kill () {
+        	logging("SessionThread.kill()");
+        	if (self == null) {
+            	logging("SessionThread.kill(): not running, skip");
+        		return;
+        	}
         	self.interrupt();
         	try {
 				self.join();
@@ -728,7 +753,7 @@ public class DAN {
         }
         DAN.log_tag = log_tag;
         csmapi.log_tag = log_tag;
-        DetectLocalECThread.start_working();
+        SearchLANECThread.instance();
         
         csmapi.ENDPOINT = DEFAULT_EC_HOST;
         DAN.request_interval = 150;
@@ -842,7 +867,7 @@ public class DAN {
 				}
             }
         }
-    	DetectLocalECThread.stop_working();
+    	SearchLANECThread.instance().kill();
     	SessionThread.instance().kill();
     	initialized = false;
     }
