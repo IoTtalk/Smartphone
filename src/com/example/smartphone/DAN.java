@@ -22,7 +22,7 @@ import android.os.Message;
 import android.util.Log;
 
 public class DAN {
-    static public final String version = "20160326";
+    static public final String version = "20160327";
 
     static public class ODFObject {
         enum Type {CONTROL_CHANNEL, ODF}
@@ -892,5 +892,13 @@ public class DAN {
 			}
 		}
 		return t.toArray(new String[]{});
+    }
+    
+    static public String ec_endpoint () {
+    	return csmapi.ENDPOINT;
+    }
+    
+    static public boolean session_status () {
+    	return SessionThread.status();
     }
 }

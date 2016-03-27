@@ -133,12 +133,12 @@ public class FeatureActivity extends Activity {
     	    public void odf_handler (DAN.ODFObject odf_object) {
     	        switch (odf_object.event_tag) {
     	        case REGISTER_FAILED:
-    	        	show_ec_status_on_ui(odf_object.message, odf_object.event_tag);
+    	        	show_ec_status_on_ui(odf_object.message, false);
     	        	show_ec_status_on_notification(odf_object.message, false);
     	        	break;
     	        	
     	        case REGISTER_SUCCEED:
-    	        	show_ec_status_on_ui(odf_object.message, odf_object.event_tag);
+    	        	show_ec_status_on_ui(odf_object.message, true);
     	        	show_ec_status_on_notification(odf_object.message, true);
     	        	String d_name = DAN.get_d_name();
     	        	logging("Get d_name:"+ d_name);
@@ -150,21 +150,25 @@ public class FeatureActivity extends Activity {
     	};
     	DAN.subscribe("Control_channel", ec_status_handler);
         
-        JSONObject profile = new JSONObject();
-        try {
-	        profile.put("d_name", "Android"+ DAN.get_clean_mac_addr(get_mac_addr()));
-	        profile.put("dm_name", C.dm_name);
-	        JSONArray feature_list = new JSONArray();
-	        for (String f: C.df_list) {
-	        	feature_list.put(f);
-	        }
-	        profile.put("df_list", feature_list);
-	        profile.put("u_name", C.u_name);
-	        profile.put("monitor", DAN.get_clean_mac_addr(get_mac_addr()));
-	        DAN.register(DAN.get_d_id(get_mac_addr()), profile);
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
+    	if (!DAN.session_status()) {
+	        JSONObject profile = new JSONObject();
+	        try {
+		        profile.put("d_name", "Android"+ DAN.get_clean_mac_addr(get_mac_addr()));
+		        profile.put("dm_name", C.dm_name);
+		        JSONArray feature_list = new JSONArray();
+		        for (String f: C.df_list) {
+		        	feature_list.put(f);
+		        }
+		        profile.put("df_list", feature_list);
+		        profile.put("u_name", C.u_name);
+		        profile.put("monitor", DAN.get_clean_mac_addr(get_mac_addr()));
+		        DAN.register(DAN.get_d_id(get_mac_addr()), profile);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    	} else {
+    		show_ec_status_on_ui(DAN.ec_endpoint(), DAN.session_status());
+    	}
     	
     	String d_name = DAN.get_d_name();
     	logging("Get d_name: "+ d_name);
@@ -173,21 +177,17 @@ public class FeatureActivity extends Activity {
 
     }
     
-    public void show_ec_status_on_ui (String host, DAN.EventTag ec_status) {
+    public void show_ec_status_on_ui (String host, boolean ec_status) {
 		((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
 		TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
 		String status_text = "";
 		int status_color = Color.rgb(0, 0, 0);
-		switch (ec_status) {
-		case REGISTER_FAILED:
-			status_text = "!";
-			status_color = Color.rgb(128, 0, 0);
-			break;
-			
-		case REGISTER_SUCCEED:
+		if (ec_status) {
 			status_text = "~";
 			status_color = Color.rgb(0, 128, 0);
-			break;
+		} else {
+			status_text = "!";
+			status_color = Color.rgb(128, 0, 0);
 		}
 		tv_ec_host_status.setText(status_text);
 		tv_ec_host_status.setTextColor(status_color);
