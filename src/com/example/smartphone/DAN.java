@@ -310,7 +310,14 @@ public class DAN {
         }
         
         public void kill () {
-        	this.interrupt();
+        	self.interrupt();
+        	try {
+				self.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+        	self = null;
+        	logging("SessionThread.kill(): singleton cleaned");
         }
         
         static public boolean status () {
@@ -837,11 +844,6 @@ public class DAN {
         }
     	DetectLocalECThread.stop_working();
     	SessionThread.instance().kill();
-    	try {
-			SessionThread.instance().join();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
     	initialized = false;
     }
 
