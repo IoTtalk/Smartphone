@@ -188,12 +188,11 @@ public class DAN {
     	static private final int RETRY_COUNT = 3;
     	static private final int RETRY_INTERVAL = 2000;
     	static private final Semaphore instance_lock = new Semaphore(1);
-    	static private boolean session_status;
     	static private SessionThread self;
-    	
+
+    	private boolean session_status;
     	private final LinkedBlockingQueue<SessionCommand> command_channel =
     			new LinkedBlockingQueue<SessionCommand>();
-    	
     	private final LinkedBlockingQueue<Integer> response_channel =
     			new LinkedBlockingQueue<Integer>();
     	
@@ -333,7 +332,10 @@ public class DAN {
         }
         
         static public boolean status () {
-        	return session_status;
+        	if (self != null) {
+        		return self.session_status;
+        	}
+        	return false;
         }
     }
 
