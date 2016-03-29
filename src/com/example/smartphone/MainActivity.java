@@ -1,5 +1,6 @@
 package com.example.smartphone;
 
+import DAN.DAN;
 import android.app.AlertDialog;
 import android.app.TabActivity;
 import android.content.DialogInterface;

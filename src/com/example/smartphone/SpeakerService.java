@@ -6,13 +6,13 @@ import java.util.HashMap;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import DAN.DAN;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Message;
 import android.util.Log;
 
 public class SpeakerService extends Service {

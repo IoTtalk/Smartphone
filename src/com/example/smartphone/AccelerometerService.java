@@ -3,6 +3,7 @@ package com.example.smartphone;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import DAN.DAN;
 import android.app.Service;
 import android.content.Intent;
 import android.hardware.Sensor;
@@ -10,12 +11,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Binder;
-import android.os.Handler;
-import android.os.Handler.Callback;
-import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Looper;
-import android.os.Message;
 import android.util.Log;
 
 public class AccelerometerService extends Service implements SensorEventListener {
