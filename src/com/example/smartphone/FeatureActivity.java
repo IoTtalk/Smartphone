@@ -1,16 +1,23 @@
 package com.example.smartphone;
 
+import java.util.Random;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import DAN.DAN;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -20,12 +27,8 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 
 public class FeatureActivity extends Activity {
-	enum EC_STATUS {
-		REGISTER_TRYING,
-		REGISTER_FAILED,
-		REGISTER_SUCCEED,
-	}
-	static public DAN.Subscriber ec_status_handler;
+	static private DAN.Subscriber ec_status_handler;
+    static private final int NOTIFICATION_ID = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,77 +121,132 @@ public class FeatureActivity extends Activity {
                 getApplicationContext().stopService(new Intent(FeatureActivity.this, SpeakerService.class));
 
         		DAN.deregister();
+        		DAN.shutdown();
+        		remove_all_notification();
                 finish();
             }
         });
         
-        // start EasyConnect Service
-        DAN.init(this, C.dm_name);
-        show_ec_status(csmapi.ENDPOINT, EC_STATUS.REGISTER_TRYING);
+        // initialize DAN
+        DAN.init(C.dm_name);
         
         ec_status_handler = new DAN.Subscriber () {
-    	    public void odf_handler (DAN.ODFObject odf_object) {
-    	        switch (odf_object.event_tag) {
-    	        case REGISTER_FAILED:
-    	        	show_ec_status(odf_object.message, EC_STATUS.REGISTER_FAILED);
-    	        	break;
-    	        	
-    	        case REGISTER_SUCCEED:
-    	        	show_ec_status(odf_object.message, EC_STATUS.REGISTER_SUCCEED);
-    	        	String d_name = DAN.get_d_name();
-    	        	logging("Get d_name:"+ d_name);
-    				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
-    				tv_d_name.setText(d_name);
-    				break;
-    	        }
+    	    public void odf_handler (final DAN.ODFObject odf_object) {
+    	    	runOnUiThread(new Thread () {
+    	    		@Override
+    	    		public void run () {
+	    	    		switch (odf_object.event_tag) {
+	        	        case REGISTER_FAILED:
+	        	        	show_ec_status_on_ui(odf_object.message, false);
+	        	        	show_ec_status_on_notification(odf_object.message, false);
+	        	        	break;
+	        	        	
+	        	        case REGISTER_SUCCEED:
+	        	        	show_ec_status_on_ui(odf_object.message, true);
+	        	        	show_ec_status_on_notification(odf_object.message, true);
+	        	        	String d_name = DAN.get_d_name();
+	        	        	logging("Get d_name:"+ d_name);
+	        				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
+	        				tv_d_name.setText(d_name);
+	        				break;
+	        	        }
+    	    		}
+    	    	});
     	    }
     	};
     	DAN.subscribe("Control_channel", ec_status_handler);
         
-        JSONObject profile = new JSONObject();
-        try {
-	        profile.put("d_name", "Android"+ DAN.get_mac_addr());
-	        profile.put("dm_name", C.dm_name);
-	        JSONArray feature_list = new JSONArray();
-	        for (String f: C.df_list) {
-	        	feature_list.put(f);
-	        }
-	        profile.put("df_list", feature_list);
-	        profile.put("u_name", C.u_name);
-	        profile.put("monitor", DAN.get_mac_addr());
-	        DAN.register(DAN.get_d_id(DAN.get_mac_addr()), profile);
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
+    	if (!DAN.session_status()) {
+	        JSONObject profile = new JSONObject();
+	        try {
+		        profile.put("d_name", "Android"+ DAN.get_clean_mac_addr(get_mac_addr()));
+		        profile.put("dm_name", C.dm_name);
+		        JSONArray feature_list = new JSONArray();
+		        for (String f: C.df_list) {
+		        	feature_list.put(f);
+		        }
+		        profile.put("df_list", feature_list);
+		        profile.put("u_name", C.u_name);
+		        profile.put("monitor", DAN.get_clean_mac_addr(get_mac_addr()));
+		        DAN.register(DAN.get_d_id(get_mac_addr()), profile);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+    	} else {
+    		show_ec_status_on_ui(DAN.ec_endpoint(), DAN.session_status());
+    	}
     	
     	String d_name = DAN.get_d_name();
-    	logging("Get d_name:"+ d_name);
+    	logging("Get d_name: "+ d_name);
 		TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
 		tv_d_name.setText(d_name);
 
     }
     
-    public void show_ec_status (String host, EC_STATUS ec_status) {
+    public void show_ec_status_on_ui (String host, boolean ec_status) {
 		((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
 		TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
-		switch (ec_status) {
-		case REGISTER_TRYING:
-			tv_ec_host_status.setText("...");
-			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));
-			break;
-		
-		case REGISTER_FAILED:
-			tv_ec_host_status.setText("!");
-			tv_ec_host_status.setTextColor(Color.rgb(128, 0, 0));
-			break;
-			
-		case REGISTER_SUCCEED:
-			tv_ec_host_status.setText("~");
-			tv_ec_host_status.setTextColor(Color.rgb(0, 128, 0));
-			break;
-			
+		String status_text = "";
+		int status_color = Color.rgb(0, 0, 0);
+		if (ec_status) {
+			status_text = "~";
+			status_color = Color.rgb(0, 128, 0);
+		} else {
+			status_text = "!";
+			status_color = Color.rgb(128, 0, 0);
 		}
+		tv_ec_host_status.setText(status_text);
+		tv_ec_host_status.setTextColor(status_color);
 
+    }
+    
+    private void show_ec_status_on_notification (String host, boolean status) {
+        String text = status ? host : "Connecting";
+        NotificationManager notification_manager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+        Notification.Builder notification_builder =
+                new Notification.Builder(this)
+                        .setSmallIcon(R.drawable.ic_launcher)
+                        .setContentTitle(C.dm_name)
+                        .setContentText(text);
+
+        PendingIntent pending_intent = PendingIntent.getActivity(
+                this, 0,
+                new Intent(this, MainActivity.class),
+                PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        notification_builder.setContentIntent(pending_intent);
+        notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
+    }
+    
+    private void remove_all_notification () {
+    	NotificationManager notification_manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+    	notification_manager.cancelAll();
+    }
+
+    public String get_mac_addr () {
+        logging("get_mac_addr()");
+
+        // Generate error mac address
+        final Random rn = new Random();
+        String ret = "E2202";
+        for (int i = 0; i < 7; i++) {
+        	ret += "0123456789ABCDEF".charAt(rn.nextInt(16));
+        }
+
+        WifiManager wifiMan = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
+        if (wifiMan == null) {
+            logging("Cannot get WiFiManager system service");
+            return ret;
+        }
+
+        WifiInfo wifiInf = wifiMan.getConnectionInfo();
+        if (wifiInf == null) {
+            logging("Cannot get connection info");
+            return ret;
+        }
+
+        return wifiInf.getMacAddress();
     }
     
     @Override

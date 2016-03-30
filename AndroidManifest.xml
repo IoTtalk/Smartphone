@@ -5,7 +5,7 @@
     android:versionName="1.0" >
 
     <uses-sdk
-        android:minSdkVersion="11"
+        android:minSdkVersion="16"
         android:targetSdkVersion="21" />
 	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
@@ -38,7 +38,6 @@
             android:screenOrientation="portrait">
         </activity>
         
-		<service android:name="com.example.smartphone.DAN"></service>
 		<service android:name="com.example.smartphone.AccelerometerService"></service>
 		<service android:name="com.example.smartphone.MicService"></service>
 		<service android:name="com.example.smartphone.SpeakerService"></service>
