@@ -128,7 +128,7 @@ public class FeatureActivity extends Activity {
         });
         
         // initialize DAN
-        DAN.init(C.dm_name);
+        DAN.init(C.log_tag);
         
         ec_status_handler = new DAN.Subscriber () {
     	    public void odf_handler (final DAN.ODFObject odf_object) {
