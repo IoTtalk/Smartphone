@@ -17,6 +17,10 @@ import android.widget.ListView;
 public class SelectECActivity extends Activity {
 	private DAN.Subscriber ec_status_handler;
 	
+	// Check if user exit without selecting any EC
+	// In which case we should call DAN.shutdown()
+	private boolean direct_exit;
+	
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -24,6 +28,7 @@ public class SelectECActivity extends Activity {
         setContentView(R.layout.activity_ec_list);
 
         DAN.init(C.log_tag);
+        direct_exit = true;
         
         // lv_available_ec_endpoints is used to display available EC ENDPOINTS
         final ListView lv_available_ec_endpoints = (ListView)findViewById(R.id.lv_available_ec_endpoints);
@@ -41,6 +46,8 @@ public class SelectECActivity extends Activity {
                 Intent intent = new Intent(SelectECActivity.this, MainActivity.class);
                 intent.putExtra("EC_ENDPOINT", ec_endpoint_list.get(position));
                 startActivity(intent);
+                direct_exit = false;
+                finish();
             }
         });
         
@@ -68,7 +75,7 @@ public class SelectECActivity extends Activity {
     	super.onPause();
     	if (isFinishing()) {
     		DAN.unsubcribe(ec_status_handler);
-    		if (!DAN.session_status()) {
+    		if (direct_exit) {
     			DAN.shutdown();
     		}
     	}
