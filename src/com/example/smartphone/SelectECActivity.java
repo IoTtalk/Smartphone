@@ -23,6 +23,7 @@ public class SelectECActivity extends Activity {
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        logging("================== SelectECActivity start ==================");
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_ec_list);
@@ -43,7 +44,7 @@ public class SelectECActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> parent,
                     View view, int position, long id) {
-                Intent intent = new Intent(SelectECActivity.this, MainActivity.class);
+                Intent intent = new Intent(SelectECActivity.this, SessionActivity.class);
                 intent.putExtra("EC_ENDPOINT", ec_endpoint_list.get(position));
                 startActivity(intent);
                 direct_exit = false;
