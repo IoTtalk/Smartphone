@@ -1,6 +1,6 @@
 package com.example.smartphone;
 
-public class C {
+public class Constants {
     static public final int NEW_DEVICE = 1;
     
     static public final int IDLE = 2;

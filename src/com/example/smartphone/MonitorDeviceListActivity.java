@@ -299,7 +299,7 @@ public class MonitorDeviceListActivity extends Activity {
 	}
     
     static public void logging (String message) {
-        Log.i(C.log_tag, "[MonitorDeviceListActivity] " + message);
+        Log.i(Constants.log_tag, "[MonitorDeviceListActivity] " + message);
     }
 	
 }

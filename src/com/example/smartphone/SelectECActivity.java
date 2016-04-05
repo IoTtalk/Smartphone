@@ -28,8 +28,15 @@ public class SelectECActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_ec_list);
 
-        DAN.init(C.log_tag);
+        DAN.init(Constants.log_tag);
         direct_exit = true;
+        if (DAN.session_status()) {
+        	logging("Already registered, jump to SessionActivity");
+            Intent intent = new Intent(SelectECActivity.this, SessionActivity.class);
+            startActivity(intent);
+            direct_exit = false;
+            finish();
+        }
         
         // lv_available_ec_endpoints is used to display available EC ENDPOINTS
         final ListView lv_available_ec_endpoints = (ListView)findViewById(R.id.lv_available_ec_endpoints);
@@ -83,7 +90,7 @@ public class SelectECActivity extends Activity {
     }
     
     static public void logging (String message) {
-        Log.i(C.log_tag, "[SelectECActivity] " + message);
+        Log.i(Constants.log_tag, "[SelectECActivity] " + message);
     }
 
 }
