@@ -44,10 +44,10 @@ public class SessionActivity extends Activity implements FeatureFragment.Deregis
     final String TITLE_FEATURES = "Features";
     final String TITLE_DISPLAY = "Display";
 	
-    FragmentManager fragment_manager;
+    final FragmentManager fragment_manager = getFragmentManager();
     FeatureFragment feature_fragment;
     DisplayFragment display_fragment;
-	ECStatusHandler ec_status_handler;
+	final ECStatusHandler ec_status_handler = new ECStatusHandler();
 	
 	@Override
     public void onCreate(Bundle savedInstanceState) {
@@ -59,7 +59,6 @@ public class SessionActivity extends Activity implements FeatureFragment.Deregis
         actionbar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
 //        actionbar.setDisplayHomeAsUpEnabled(true);
 
-        fragment_manager = getFragmentManager();
         feature_fragment = (FeatureFragment) fragment_manager.findFragmentById(R.id.frag_features);
         display_fragment = (DisplayFragment) fragment_manager.findFragmentById(R.id.frag_display);
         
@@ -95,11 +94,12 @@ public class SessionActivity extends Activity implements FeatureFragment.Deregis
 
     	actionbar.addTab(actionbar.newTab().setText(TITLE_FEATURES).setTabListener(tablistener));
     	actionbar.addTab(actionbar.newTab().setText(TITLE_DISPLAY).setTabListener(tablistener));
+    	
+    	fragment_manager.beginTransaction().show(feature_fragment).hide(display_fragment).commit();
 
         // initialize DAN
         DAN.init(Constants.log_tag);
         
-        ec_status_handler = new ECStatusHandler();
     	DAN.subscribe("Control_channel", ec_status_handler);
         
     	if (!DAN.session_status()) {

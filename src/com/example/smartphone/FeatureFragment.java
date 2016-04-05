@@ -72,8 +72,8 @@ public class FeatureFragment extends Fragment {
             }
         });
         
-        Button btn_detach = (Button) root_view.findViewById(R.id.btn_deregister);
-        btn_detach.setOnClickListener(new View.OnClickListener () {
+        final Button btn_deregister = (Button) root_view.findViewById(R.id.btn_deregister);
+        btn_deregister.setOnClickListener(new View.OnClickListener () {
             @Override
             public void onClick (View v) {
                 logging("Request AccelerometerService to stop");
