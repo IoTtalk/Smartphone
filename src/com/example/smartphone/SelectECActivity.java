@@ -43,7 +43,7 @@ public class SelectECActivity extends Activity {
             finish();
         }
         
-        adapter = new ECListAdapter(this, R.layout.ec_list_item, ec_endpoint_list);
+        adapter = new ECListAdapter(this, R.layout.item_ec_list, ec_endpoint_list);
         reload_ec_list();
 
         // show available EC ENDPOINTS

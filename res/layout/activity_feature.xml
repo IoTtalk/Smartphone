@@ -13,8 +13,14 @@
 		android:layout_height="match_parent" />
     
     <fragment
-        android:name="com.example.smartphone.DisplayFragment"
-		android:id="@+id/frag_display"
+        android:name="com.example.smartphone.DisplayFeatureListFragment"
+		android:id="@+id/frag_display_feature_list"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent" />
+    
+    <fragment
+        android:name="com.example.smartphone.DisplayFeatureDataFragment"
+		android:id="@+id/frag_display_feature_data"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent" />
     

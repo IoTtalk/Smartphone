@@ -24,7 +24,7 @@ public class FeatureFragment extends Fragment {
 	@Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        root_view = inflater.inflate(R.layout.frag_features, container, false);
+        root_view = inflater.inflate(R.layout.frag_feature_switch, container, false);
         
         final ToggleButton btn_asensor = (ToggleButton) root_view.findViewById(R.id.btn_accelerometer);
     	btn_asensor.setChecked(AccelerometerService.is_running());

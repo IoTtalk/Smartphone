@@ -1,10 +1,6 @@
 package com.example.smartphone;
 
-import java.util.Random;
-
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import DAN.DAN;
 import android.app.ActionBar;
@@ -13,14 +9,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -32,7 +22,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 public class FeatureActivity extends Activity implements FeatureFragment.DeregisterCallback {
-	final String version = "20160405";
+	final String version = "20160408";
     
     final int MENU_ITEM_ID_DAN_VERSION = 0;
     final int MENU_ITEM_ID_DAI_VERSION = 1;
@@ -44,14 +34,16 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
 	
     final FragmentManager fragment_manager = getFragmentManager();
     FeatureFragment feature_fragment;
-    DisplayFragment display_fragment;
+    DisplayFeatureListFragment display_feature_list_fragment;
+    DisplayFeatureDataFragment display_feature_data_fragment;
 	final EventSubscriber event_subscriber = new EventSubscriber();
+	final ODFSubscriber display_subscriber = new ODFSubscriber();
 	
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        setContentView(R.layout.activity_session);
+        setContentView(R.layout.activity_feature);
         
     	if (!DAN.session_status()) {
     		Intent intent = new Intent(FeatureActivity.this, SelectECActivity.class);
@@ -64,7 +56,8 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
 //        actionbar.setDisplayHomeAsUpEnabled(true);
 
         feature_fragment = (FeatureFragment) fragment_manager.findFragmentById(R.id.frag_features);
-        display_fragment = (DisplayFragment) fragment_manager.findFragmentById(R.id.frag_display);
+        display_feature_list_fragment = (DisplayFeatureListFragment) fragment_manager.findFragmentById(R.id.frag_display_feature_list);
+        display_feature_data_fragment = (DisplayFeatureDataFragment) fragment_manager.findFragmentById(R.id.frag_display_feature_data);
         
         ActionBar.TabListener tablistener = new ActionBar.TabListener () {
     		@Override
@@ -72,9 +65,11 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
     			switch ((String) tab.getText()) {
     			case TITLE_FEATURES:
     				ft.show(feature_fragment);
+    				DAN.unsubscribe("Display");
     				break;
     			case TITLE_DISPLAY:
-    				ft.show(display_fragment);
+    				ft.show(display_feature_list_fragment);
+    				DAN.subscribe("Display", display_subscriber);
     				break;
     			}
     		}
@@ -86,7 +81,7 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
     				ft.hide(feature_fragment);
     				break;
     			case TITLE_DISPLAY:
-    				ft.hide(display_fragment);
+    				ft.hide(display_feature_list_fragment);
     				break;
     			}
     		}
@@ -99,7 +94,11 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
     	actionbar.addTab(actionbar.newTab().setText(TITLE_FEATURES).setTabListener(tablistener));
     	actionbar.addTab(actionbar.newTab().setText(TITLE_DISPLAY).setTabListener(tablistener));
     	
-    	fragment_manager.beginTransaction().show(feature_fragment).hide(display_fragment).commit();
+    	fragment_manager.beginTransaction()
+    			.show(feature_fragment)
+    			.hide(display_feature_list_fragment)
+    			.hide(display_feature_data_fragment)
+    			.commit();
         
     	DAN.subscribe("Control_channel", event_subscriber);
 
@@ -137,6 +136,25 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
         	        }
 	    		}
 	    	});
+	    }
+	};
+	
+	class ODFSubscriber extends DAN.Subscriber {
+	    public void odf_handler (final DAN.ODFObject odf_object) {
+	    	// send feature list to display_device_list_fragment
+			runOnUiThread(new Thread () {
+				@Override
+				public void run () {
+					try {
+						display_feature_list_fragment.set_newest_metadata(
+								odf_object.dataset.newest().data.getJSONObject(0));
+					} catch (JSONException e) {
+						e.printStackTrace();
+					}
+				}
+			});
+	    	
+	    	// send feature data to display_feature_data_fragment
 	    }
 	};
     

@@ -6,10 +6,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-public class DisplayFragment extends Fragment {
+public class DisplayFeatureDataFragment extends Fragment {
 	@Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.activity_monitor, container, false);
+        return inflater.inflate(R.layout.frag_feature_switch, container, false);
     }
 }
