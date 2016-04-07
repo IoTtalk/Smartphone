@@ -8,20 +8,24 @@ import org.json.JSONObject;
 
 import DAN.DAN;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class SelectECActivity extends Activity {
-	final ArrayList<String> ec_endpoint_list = new ArrayList<String>();
-    ArrayAdapter<String> adapter;
+	final ArrayList<ECListItem> ec_endpoint_list = new ArrayList<ECListItem>();
+    ArrayAdapter<ECListItem> adapter;
 	final DAN.Subscriber event_subscriber = new EventSubscriber();
 	
     @Override
@@ -39,12 +43,8 @@ public class SelectECActivity extends Activity {
             finish();
         }
         
-        adapter = new ArrayAdapter<String>(
-        		this, android.R.layout.simple_list_item_1, android.R.id.text1, ec_endpoint_list);
-        for (String i: DAN.available_ec()) {
-        	ec_endpoint_list.add(i);
-        }
-		adapter.notifyDataSetChanged();
+        adapter = new ECListAdapter(this, R.layout.ec_list_item, ec_endpoint_list);
+        reload_ec_list();
 
         // show available EC ENDPOINTS
         final ListView lv_available_ec_endpoints = (ListView)findViewById(R.id.lv_available_ec_endpoints);
@@ -53,8 +53,9 @@ public class SelectECActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> parent,
                     View view, int position, long id) {
+            	ECListItem ec_list_item = ec_endpoint_list.get(position);
             	String clean_mac_addr = DAN.get_clean_mac_addr(Utils.get_mac_addr(SelectECActivity.this));
-            	String EC_ENDPOINT = ec_endpoint_list.get(position);
+            	String EC_ENDPOINT = ec_list_item.ec_endpoint;
             	JSONObject profile = new JSONObject();
     	        try {
     		        profile.put("d_name", "Android"+ clean_mac_addr);
@@ -70,6 +71,8 @@ public class SelectECActivity extends Activity {
     			} catch (JSONException e) {
     				e.printStackTrace();
     			}
+    	        ec_list_item.connecting = true;
+    	        adapter.notifyDataSetChanged();
     	        Utils.show_ec_status_on_notification(SelectECActivity.this, EC_ENDPOINT, false);
             }
         });
@@ -82,7 +85,7 @@ public class SelectECActivity extends Activity {
 	    	switch (odf_object.event_tag) {
 			case FOUND_NEW_EC:
 				logging("FOUND_NEW_EC: "+ odf_object.message);
-				ec_endpoint_list.add(odf_object.message);
+				ec_endpoint_list.add(new ECListItem(odf_object.message));
     	    	runOnUiThread(new Thread () {
     	    		@Override
     	    		public void run () {
@@ -94,7 +97,11 @@ public class SelectECActivity extends Activity {
 				runOnUiThread(new Thread () {
     	    		@Override
     	    		public void run () {
-    					Toast.makeText(getApplicationContext(), "Register failed.", Toast.LENGTH_LONG).show();
+    					Toast.makeText(
+    							getApplicationContext(),
+    							"Register to "+ odf_object.message +" failed.",
+    							Toast.LENGTH_LONG).show();
+    	    	        reload_ec_list();
     	    		}
     	    	});
     	        Utils.remove_all_notification(SelectECActivity.this);
@@ -109,6 +116,67 @@ public class SelectECActivity extends Activity {
 				break;
 	    	}
 	    }
+	}
+    
+    public class ECListItem {
+    	public String ec_endpoint;
+    	public boolean connecting;
+    	public ECListItem (String e) {
+    		this.ec_endpoint = e;
+    		this.connecting = false;
+    	}
+    }
+
+	public class ECListAdapter extends ArrayAdapter<ECListItem> {
+	    Context context;
+	    int layout_resource_id;
+	    ArrayList<ECListItem> data = null;
+	    
+	    public ECListAdapter (Context context, int layout_resource_id, ArrayList<ECListItem> data) {
+	        		super(context, layout_resource_id, data);
+	        this.context = context;
+	        this.layout_resource_id = layout_resource_id;
+	        this.data = data;
+	    }
+	    
+	    @Override
+	    public View getView (int position, View convertView, ViewGroup parent) {
+	        View row = convertView;
+	        ECEndpointHolder holder = null;
+	        
+	        if(row == null) {
+	            LayoutInflater inflater = ((Activity)context).getLayoutInflater();
+	            row = inflater.inflate(layout_resource_id, parent, false);
+	            holder = new ECEndpointHolder();
+	            holder.ec_endpoint = (TextView)row.findViewById(R.id.tv_ec_endpoint);
+	            holder.connecting = (TextView)row.findViewById(R.id.tv_connecting);
+	            row.setTag(holder);
+	        } else {
+	            holder = (ECEndpointHolder)row.getTag();
+	        }
+	        
+	        ECListItem i = data.get(position);
+	        holder.ec_endpoint.setText(i.ec_endpoint.replace("http://", "").replace(":9999", ""));
+	        if (i.connecting) {
+		        holder.connecting.setText("...");
+	        } else {
+	        	holder.connecting.setText("");
+	        }
+	        return row;
+	    }
+	
+	    class ECEndpointHolder {
+	        TextView ec_endpoint;
+	        TextView connecting;
+	    }
+	}
+	
+	public void reload_ec_list () {
+		ec_endpoint_list.clear();
+        for (String i: DAN.available_ec()) {
+        	ec_endpoint_list.add(new ECListItem(i));
+        }
+		adapter.notifyDataSetChanged();
 	}
     
     @Override
