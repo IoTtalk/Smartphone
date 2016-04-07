@@ -31,10 +31,8 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.TextView;
 
-public class SessionActivity extends Activity implements FeatureFragment.DeregisterCallback {
+public class FeatureActivity extends Activity implements FeatureFragment.DeregisterCallback {
 	final String version = "20160405";
-
-    final int NOTIFICATION_ID = 1;
     
     final int MENU_ITEM_ID_DAN_VERSION = 0;
     final int MENU_ITEM_ID_DAI_VERSION = 1;
@@ -47,13 +45,19 @@ public class SessionActivity extends Activity implements FeatureFragment.Deregis
     final FragmentManager fragment_manager = getFragmentManager();
     FeatureFragment feature_fragment;
     DisplayFragment display_fragment;
-	final ECStatusHandler ec_status_handler = new ECStatusHandler();
+	final EventSubscriber event_subscriber = new EventSubscriber();
 	
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_session);
+        
+    	if (!DAN.session_status()) {
+    		Intent intent = new Intent(FeatureActivity.this, SelectECActivity.class);
+            startActivity(intent);
+            finish();
+    	}
         
         final ActionBar actionbar = getActionBar();
         actionbar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
@@ -96,45 +100,22 @@ public class SessionActivity extends Activity implements FeatureFragment.Deregis
     	actionbar.addTab(actionbar.newTab().setText(TITLE_DISPLAY).setTabListener(tablistener));
     	
     	fragment_manager.beginTransaction().show(feature_fragment).hide(display_fragment).commit();
+        
+    	DAN.subscribe("Control_channel", event_subscriber);
 
-        // initialize DAN
-        DAN.init(Constants.log_tag);
-        
-    	DAN.subscribe("Control_channel", ec_status_handler);
-        
-    	if (!DAN.session_status()) {
-	        final String EC_ENDPOINT = getIntent().getStringExtra("EC_ENDPOINT");
-	        JSONObject profile = new JSONObject();
-	        try {
-		        profile.put("d_name", "Android"+ DAN.get_clean_mac_addr(get_mac_addr()));
-		        profile.put("dm_name", Constants.dm_name);
-		        JSONArray feature_list = new JSONArray();
-		        for (String f: Constants.df_list) {
-		        	feature_list.put(f);
-		        }
-		        profile.put("df_list", feature_list);
-		        profile.put("u_name", Constants.u_name);
-		        profile.put("monitor", DAN.get_clean_mac_addr(get_mac_addr()));
-	        	DAN.register(EC_ENDPOINT, DAN.get_d_id(get_mac_addr()), profile);
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-    	} else {
-    		feature_fragment.show_ec_status_on_ui(DAN.ec_endpoint(), DAN.session_status());
-    	}
-    	
     	feature_fragment.show_d_name_on_ui(DAN.get_d_name());
+		feature_fragment.show_ec_status_on_ui(DAN.ec_endpoint(), DAN.session_status());
     }
     
 	@Override
 	public void trigger() {
 		DAN.deregister();
 		DAN.shutdown();
-		remove_all_notification();
+		Utils.remove_all_notification(FeatureActivity.this);
         finish();
 	}
 	
-	class ECStatusHandler extends DAN.Subscriber {
+	class EventSubscriber extends DAN.Subscriber {
 	    public void odf_handler (final DAN.ODFObject odf_object) {
 	    	runOnUiThread(new Thread () {
 	    		@Override
@@ -142,12 +123,12 @@ public class SessionActivity extends Activity implements FeatureFragment.Deregis
     	    		switch (odf_object.event_tag) {
         	        case REGISTER_FAILED:
         	        	feature_fragment.show_ec_status_on_ui(odf_object.message, false);
-        	        	show_ec_status_on_notification(odf_object.message, false);
+        	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, false);
         	        	break;
         	        	
         	        case REGISTER_SUCCEED:
         	        	feature_fragment.show_ec_status_on_ui(odf_object.message, true);
-        	        	show_ec_status_on_notification(odf_object.message, true);
+        	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, true);
         	        	String d_name = DAN.get_d_name();
         	        	logging("Get d_name:"+ d_name);
         				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
@@ -232,55 +213,6 @@ public class SessionActivity extends Activity implements FeatureFragment.Deregis
             }
         });
         dialog.create().show();
-    }
-    
-    private void show_ec_status_on_notification (String host, boolean status) {
-        String text = status ? host : "Connecting";
-        NotificationManager notification_manager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
-        Notification.Builder notification_builder =
-                new Notification.Builder(this)
-                        .setSmallIcon(R.drawable.ic_launcher)
-                        .setContentTitle(Constants.dm_name)
-                        .setContentText(text);
-
-        PendingIntent pending_intent = PendingIntent.getActivity(
-                this, 0,
-                new Intent(this, SessionActivity.class),
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
-
-        notification_builder.setContentIntent(pending_intent);
-        notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
-    }
-    
-    private void remove_all_notification () {
-    	NotificationManager notification_manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-    	notification_manager.cancelAll();
-    }
-
-    public String get_mac_addr () {
-        logging("get_mac_addr()");
-
-        // Generate error mac address
-        final Random rn = new Random();
-        String ret = "E2202";
-        for (int i = 0; i < 7; i++) {
-        	ret += "0123456789ABCDEF".charAt(rn.nextInt(16));
-        }
-
-        WifiManager wifiMan = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
-        if (wifiMan == null) {
-            logging("Cannot get WiFiManager system service");
-            return ret;
-        }
-
-        WifiInfo wifiInf = wifiMan.getConnectionInfo();
-        if (wifiInf == null) {
-            logging("Cannot get connection info");
-            return ret;
-        }
-
-        return wifiInf.getMacAddress();
     }
     
     static public void logging (String message) {
