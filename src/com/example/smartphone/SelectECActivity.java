@@ -114,8 +114,8 @@ public class SelectECActivity extends Activity {
     @Override
     public void onPause () {
     	super.onPause();
+		DAN.unsubcribe(event_subscriber);
     	if (isFinishing()) {
-    		DAN.unsubcribe(event_subscriber);
     		if (!DAN.session_status()) {
     	        Utils.remove_all_notification(SelectECActivity.this);
     			DAN.shutdown();
