@@ -17,9 +17,9 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
-public class FeatureFragment extends Fragment {
+public class SwitchFeatureFragment extends Fragment {
 	View root_view;
-	DeregisterCallback deregister_callback;
+	FeatureActivity coordinator;
 	
 	@Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -82,8 +82,8 @@ public class FeatureFragment extends Fragment {
                 getActivity().getApplicationContext().stopService(new Intent(getActivity(), MicService.class));
                 logging("Request SpeakerService to stop");
                 getActivity().getApplicationContext().stopService(new Intent(getActivity(), SpeakerService.class));
-                if (deregister_callback != null) {
-                	deregister_callback.trigger();
+                if (coordinator != null) {
+                	coordinator.shutdown();
                 }
             }
         });
@@ -93,19 +93,15 @@ public class FeatureFragment extends Fragment {
         return root_view;
     }
     
-    public interface DeregisterCallback {
-    	public void trigger ();
-    }
-	
-	@Override
+    @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
         // This makes sure that the container activity has implemented
         // the callback interface. If not, it throws an exception
         try {
-        	deregister_callback = (DeregisterCallback) activity;
+        	coordinator = (FeatureActivity) activity;
         } catch (ClassCastException e) {
-            throw new ClassCastException(activity.toString() + " must implement DeregisterCallback");
+            throw new ClassCastException(activity.toString() + " must implement xxx");
         }
     }
 	
@@ -126,7 +122,7 @@ public class FeatureFragment extends Fragment {
     }
     
     public void show_d_name_on_ui (String d_name) {
-		((TextView)root_view.findViewById(R.id.tv_d_name)).setText(DAN.get_d_name());
+		((TextView)root_view.findViewById(R.id.tv_item_d_name)).setText(DAN.get_d_name());
     }
     
     public void show_wifi_ssid_on_ui () {

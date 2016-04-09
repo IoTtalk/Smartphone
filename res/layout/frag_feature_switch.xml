@@ -18,7 +18,7 @@
         	android:text="d_name:"
 			style="@style/information_text"/>
 		<TextView
-			android:id="@+id/tv_d_name"
+			android:id="@+id/tv_item_d_name"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:paddingRight="3dp"

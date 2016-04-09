@@ -230,7 +230,7 @@ public class MonitorDeviceListActivity extends Activity {
 		    				JSONObject new_feature_view_record = new JSONObject();
 			    			new_feature_view_record.put("f_name", f_name);
 			    			
-			    			LineGraph line = new LineGraph(argc);
+			    			LineGraph line = new LineGraph();
 			    			GraphicalView view = line.getView(MonitorDeviceListActivity.this);
 			    			new_feature_view_record.put("graph", line);
 			    			new_feature_view_record.put("view", view);
@@ -265,7 +265,6 @@ public class MonitorDeviceListActivity extends Activity {
 		    					d = ((JSONArray)d).getJSONArray(0);
 		    				}
 		    			}
-		    			line.addNewPoints(timestep , d);
 		    			
 		    			GraphicalView view = (GraphicalView)
 		    					view_index.getJSONObject(device_index)

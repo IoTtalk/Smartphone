@@ -1,6 +1,7 @@
 package com.example.smartphone;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import DAN.DAN;
 import android.app.ActionBar;
@@ -21,7 +22,7 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.TextView;
 
-public class FeatureActivity extends Activity implements FeatureFragment.DeregisterCallback {
+public class FeatureActivity extends Activity {
 	final String version = "20160408";
     
     final int MENU_ITEM_ID_DAN_VERSION = 0;
@@ -31,13 +32,14 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
 	
     final String TITLE_FEATURES = "Features";
     final String TITLE_DISPLAY = "Display";
+    final String CURRENT_TAB = "CURRENT_TAB";
 	
     final FragmentManager fragment_manager = getFragmentManager();
-    FeatureFragment feature_fragment;
-    DisplayFeatureListFragment display_feature_list_fragment;
-    DisplayFeatureDataFragment display_feature_data_fragment;
+    SwitchFeatureFragment switch_feature_fragment;
+    ChartFragment chart_fragment;
 	final EventSubscriber event_subscriber = new EventSubscriber();
 	final ODFSubscriber display_subscriber = new ODFSubscriber();
+	TAB current_tab;
 	
 	@Override
     public void onCreate(Bundle savedInstanceState) {
@@ -53,23 +55,28 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
         
         final ActionBar actionbar = getActionBar();
         actionbar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
-//        actionbar.setDisplayHomeAsUpEnabled(true);
 
-        feature_fragment = (FeatureFragment) fragment_manager.findFragmentById(R.id.frag_features);
-        display_feature_list_fragment = (DisplayFeatureListFragment) fragment_manager.findFragmentById(R.id.frag_display_feature_list);
-        display_feature_data_fragment = (DisplayFeatureDataFragment) fragment_manager.findFragmentById(R.id.frag_display_feature_data);
+        switch_feature_fragment = (SwitchFeatureFragment) fragment_manager.findFragmentById(R.id.frag_features);
+        chart_fragment = (ChartFragment) fragment_manager.findFragmentById(R.id.frag_display_feature_list);
         
         ActionBar.TabListener tablistener = new ActionBar.TabListener () {
     		@Override
     		public void onTabSelected(Tab tab, FragmentTransaction ft) {
     			switch ((String) tab.getText()) {
     			case TITLE_FEATURES:
-    				ft.show(feature_fragment);
+    				ft.show(switch_feature_fragment);
     				DAN.unsubscribe("Display");
+    				current_tab = TAB.FEATURES;
+    		        actionbar.setHomeButtonEnabled(false);
+    				actionbar.setDisplayHomeAsUpEnabled(false);
     				break;
     			case TITLE_DISPLAY:
-    				ft.show(display_feature_list_fragment);
+    				ft.show(chart_fragment);
     				DAN.subscribe("Display", display_subscriber);
+    				current_tab = TAB.DISPLAY;
+    				boolean show_home_as_up = (chart_fragment.current_page() == ChartFragment.PAGE.DATA);
+    		        actionbar.setHomeButtonEnabled(show_home_as_up);
+					actionbar.setDisplayHomeAsUpEnabled(show_home_as_up);
     				break;
     			}
     		}
@@ -78,10 +85,10 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
     		public void onTabUnselected(Tab tab, FragmentTransaction ft) {
     			switch ((String) tab.getText()) {
     			case TITLE_FEATURES:
-    				ft.hide(feature_fragment);
+    				ft.hide(switch_feature_fragment);
     				break;
     			case TITLE_DISPLAY:
-    				ft.hide(display_feature_list_fragment);
+    				ft.hide(chart_fragment);
     				break;
     			}
     		}
@@ -93,70 +100,28 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
 
     	actionbar.addTab(actionbar.newTab().setText(TITLE_FEATURES).setTabListener(tablistener));
     	actionbar.addTab(actionbar.newTab().setText(TITLE_DISPLAY).setTabListener(tablistener));
-    	
-    	fragment_manager.beginTransaction()
-    			.show(feature_fragment)
-    			.hide(display_feature_list_fragment)
-    			.hide(display_feature_data_fragment)
-    			.commit();
         
     	DAN.subscribe("Control_channel", event_subscriber);
 
-    	feature_fragment.show_d_name_on_ui(DAN.get_d_name());
-		feature_fragment.show_ec_status_on_ui(DAN.ec_endpoint(), DAN.session_status());
+    	switch_feature_fragment.show_d_name_on_ui(DAN.get_d_name());
+		switch_feature_fragment.show_ec_status_on_ui(DAN.ec_endpoint(), DAN.session_status());
     }
-    
+	
 	@Override
-	public void trigger() {
-		DAN.deregister();
-		DAN.shutdown();
-		Utils.remove_all_notification(FeatureActivity.this);
-        finish();
+	public void onPause () {
+    	super.onPause();
+		if (current_tab == TAB.DISPLAY) {
+			DAN.unsubscribe("Display");
+		}
 	}
 	
-	class EventSubscriber extends DAN.Subscriber {
-	    public void odf_handler (final DAN.ODFObject odf_object) {
-	    	runOnUiThread(new Thread () {
-	    		@Override
-	    		public void run () {
-    	    		switch (odf_object.event_tag) {
-        	        case REGISTER_FAILED:
-        	        	feature_fragment.show_ec_status_on_ui(odf_object.message, false);
-        	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, false);
-        	        	break;
-        	        	
-        	        case REGISTER_SUCCEED:
-        	        	feature_fragment.show_ec_status_on_ui(odf_object.message, true);
-        	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, true);
-        	        	String d_name = DAN.get_d_name();
-        	        	logging("Get d_name:"+ d_name);
-        				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
-        				tv_d_name.setText(d_name);
-        				break;
-        	        }
-	    		}
-	    	});
-	    }
-	};
-	
-	class ODFSubscriber extends DAN.Subscriber {
-	    public void odf_handler (final DAN.ODFObject odf_object) {
-	    	// send feature list to display_device_list_fragment
-			runOnUiThread(new Thread () {
-				@Override
-				public void run () {
-					try {
-						display_feature_list_fragment.set_newest_metadata(
-								odf_object.dataset.newest().data.getJSONObject(0));
-					} catch (JSONException e) {
-						e.printStackTrace();
-					}
-				}
-			});
-	    	
-	    	// send feature data to display_feature_data_fragment
-	    }
-	};
+	@Override
+	public void onResume () {
+		super.onResume();
+		if (current_tab == TAB.DISPLAY) {
+			DAN.subscribe("Display", display_subscriber);
+		}
+	}
     
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
@@ -180,9 +145,74 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
         case MENU_ITEM_REREGISTER:
         	show_selection_dialog("Reregister to EC", DAN.available_ec());
         	break;
+        case android.R.id.home:
+        	onBackPressed();
+        	break;
         }
         return super.onOptionsItemSelected(item);
     }
+	
+	@Override
+	public void onBackPressed() {
+		if (current_tab == TAB.FEATURES) {
+			finish();
+		} else if (chart_fragment.current_page() == ChartFragment.PAGE.LIST) {
+			finish();
+		} else {
+			chart_fragment.show_page(ChartFragment.PAGE.LIST);
+		}
+	}
+    
+	public void shutdown() {
+		DAN.deregister();
+		DAN.shutdown();
+		Utils.remove_all_notification(FeatureActivity.this);
+        finish();
+	}
+	
+	class EventSubscriber extends DAN.Subscriber {
+	    public void odf_handler (final DAN.ODFObject odf_object) {
+	    	runOnUiThread(new Thread () {
+	    		@Override
+	    		public void run () {
+    	    		switch (odf_object.event_tag) {
+        	        case REGISTER_FAILED:
+        	        	switch_feature_fragment.show_ec_status_on_ui(odf_object.message, false);
+        	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, false);
+        	        	break;
+        	        	
+        	        case REGISTER_SUCCEED:
+        	        	switch_feature_fragment.show_ec_status_on_ui(odf_object.message, true);
+        	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, true);
+        	        	String d_name = DAN.get_d_name();
+        	        	logging("Get d_name:"+ d_name);
+        				TextView tv_d_name = (TextView)findViewById(R.id.tv_item_d_name);
+        				tv_d_name.setText(d_name);
+        				break;
+        	        }
+	    		}
+	    	});
+	    }
+	};
+	
+	class ODFSubscriber extends DAN.Subscriber {
+	    public void odf_handler (final DAN.ODFObject odf_object) {
+	    	// send feature list to display_device_list_fragment
+			runOnUiThread(new Thread () {
+				@Override
+				public void run () {
+					try {
+						JSONObject newest_data = odf_object.dataset.newest().data.getJSONObject(0);
+						chart_fragment.set_newest_metadata(newest_data);
+					} catch (JSONException e) {
+						e.printStackTrace();
+					}
+				}
+			});
+	    	
+	    	// send feature data to display_feature_data_fragment
+	    }
+	};
 
     private void show_input_dialog (String title, String message, String hint) {
         AlertDialog.Builder dialog = new AlertDialog.Builder(this);
@@ -232,9 +262,13 @@ public class FeatureActivity extends Activity implements FeatureFragment.Deregis
         });
         dialog.create().show();
     }
+	
+	public enum TAB {
+		FEATURES, DISPLAY,
+	}
     
     static public void logging (String message) {
-        Log.i(Constants.log_tag, "[SessionActivity] " + message);
+        Log.i(Constants.log_tag, "[FeatureActivity] " + message);
     }
 
 }

@@ -80,6 +80,18 @@ public class SelectECActivity extends Activity {
     	DAN.subscribe("Control_channel", event_subscriber);
     }
     
+    @Override
+    public void onPause () {
+    	super.onPause();
+		DAN.unsubcribe(event_subscriber);
+    	if (isFinishing()) {
+    		if (!DAN.session_status()) {
+    	        Utils.remove_all_notification(SelectECActivity.this);
+    			DAN.shutdown();
+    		}
+    	}
+    }
+    
     class EventSubscriber extends DAN.Subscriber {
 	    public void odf_handler (final DAN.ODFObject odf_object) {
 	    	switch (odf_object.event_tag) {
@@ -178,18 +190,6 @@ public class SelectECActivity extends Activity {
         }
 		adapter.notifyDataSetChanged();
 	}
-    
-    @Override
-    public void onPause () {
-    	super.onPause();
-		DAN.unsubcribe(event_subscriber);
-    	if (isFinishing()) {
-    		if (!DAN.session_status()) {
-    	        Utils.remove_all_notification(SelectECActivity.this);
-    			DAN.shutdown();
-    		}
-    	}
-    }
     
     static public void logging (String message) {
         Log.i(Constants.log_tag, "[SelectECActivity] " + message);
