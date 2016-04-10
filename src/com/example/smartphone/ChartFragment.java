@@ -159,21 +159,21 @@ public class ChartFragment extends Fragment {
 	        if(row == null) {
 	            LayoutInflater inflater = ((Activity)context).getLayoutInflater();
 	            holder = new FeatureMetaDataHolder();
-		        if (i.is_d_name) {
-		            row = inflater.inflate(R.layout.item_metadata_d_name, parent, false);
-		            holder.tv_d_name = (TextView) row.findViewById(R.id.tv_item_d_name);
-		        } else {
-		            row = inflater.inflate(R.layout.item_metadata_f_name, parent, false);
-		            holder.tv_f_name = (TextView) row.findViewById(R.id.tv_item_f_name);
-		        }
+	            row = inflater.inflate(R.layout.item_metadata, parent, false);
+	            holder.tv_d_name = (TextView) row.findViewById(R.id.tv_item_d_name);
+	            holder.tv_f_name = (TextView) row.findViewById(R.id.tv_item_f_name);
 	            row.setTag(holder);
 	        } else {
 	            holder = (FeatureMetaDataHolder) row.getTag();
 	        }
 	        
 	        if (i.is_d_name) {
+	        	holder.tv_d_name.setVisibility(View.VISIBLE);
+	        	holder.tv_f_name.setVisibility(View.GONE);
 	        	holder.tv_d_name.setText(i.d_name);
 	        } else {
+	        	holder.tv_d_name.setVisibility(View.GONE);
+	        	holder.tv_f_name.setVisibility(View.VISIBLE);
 	        	holder.tv_f_name.setText(i.f_name);
 	        }
 	        return row;
@@ -185,7 +185,7 @@ public class ChartFragment extends Fragment {
 	    }
 	
 	    class FeatureMetaDataHolder {
-	        TextView tv_d_name;
+	    	TextView tv_d_name;
 	        TextView tv_f_name;
 	    }
 
