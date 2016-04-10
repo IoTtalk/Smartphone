@@ -158,7 +158,7 @@ public class SpeakerService extends Service {
     }
 
     private void logging (String message) {
-        Log.i(C.log_tag, "[SpeakerService] " + message);
+        Log.i(Constants.log_tag, "[SpeakerService] " + message);
     }
     
 }

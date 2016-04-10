@@ -1,269 +1,274 @@
 package com.example.smartphone;
 
-import java.util.Random;
-
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import DAN.DAN;
+import android.app.ActionBar;
+import android.app.ActionBar.Tab;
 import android.app.Activity;
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
+import android.app.AlertDialog;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.Configuration;
-import android.graphics.Color;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
-import android.view.View;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.CompoundButton;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.ToggleButton;
 
 public class FeatureActivity extends Activity {
-	static private DAN.Subscriber ec_status_handler;
-    static private final int NOTIFICATION_ID = 1;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+	final String version = "20160408";
+    
+    final int MENU_ITEM_ID_DAN_VERSION = 0;
+    final int MENU_ITEM_ID_DAI_VERSION = 1;
+    final int MENU_ITEM_REQUEST_INTERVAL = 2;
+    final int MENU_ITEM_REREGISTER = 3;
+	
+    final String TITLE_FEATURES = "Features";
+    final String TITLE_DISPLAY = "Display";
+    final String CURRENT_TAB = "CURRENT_TAB";
+	
+    final FragmentManager fragment_manager = getFragmentManager();
+    SwitchFeatureFragment switch_feature_fragment;
+    ChartFragment chart_fragment;
+	final EventSubscriber event_subscriber = new EventSubscriber();
+	final ODFSubscriber display_subscriber = new ODFSubscriber();
+	TAB current_tab;
+	
+	@Override
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        
-        setContentView(R.layout.activity_features);
-
-        final ToggleButton btn_gsensor = (ToggleButton) findViewById(R.id.btn_accelerometer);
-        btn_gsensor.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    logging("Request GSensorService start");
-                    Intent intent = new Intent (FeatureActivity.this, AccelerometerService.class);
-                    getApplicationContext().startService(intent);
-                    
-                } else {
-                    logging("Request GSensorService stop");
-                    getApplicationContext().stopService(new Intent(FeatureActivity.this, AccelerometerService.class));
-                    
-                }
-            }
-        });
-        
-        if ( !AccelerometerService.is_running() ) {
-        	btn_gsensor.setChecked(false);
-            
-        } else {
-        	btn_gsensor.setChecked(true);
-            
-        }
-        
-        final ToggleButton btn_mic = (ToggleButton) findViewById(R.id.btn_mic);
-        btn_mic.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    logging("Request MicService start");
-                    Intent intent = new Intent (FeatureActivity.this, MicService.class);
-                    getApplicationContext().startService(intent);
-                    
-                } else {
-                    logging("Request MicService stop");
-                    getApplicationContext().stopService(new Intent(FeatureActivity.this, MicService.class));
-                    
-                }
-            }
-        });
-        
-        if ( !MicService.is_running() ) {
-        	btn_mic.setChecked(false);
-            
-        } else {
-        	btn_mic.setChecked(true);
-            
-        }
-        
-        final ToggleButton btn_speaker = (ToggleButton) findViewById(R.id.btn_speaker);
-        btn_speaker.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    logging("Request SpeakerService start");
-                    Intent intent = new Intent (FeatureActivity.this, SpeakerService.class);
-                    getApplicationContext().startService(intent);
-                    
-                } else {
-                    logging("Request SpeakerService stop");
-                    getApplicationContext().stopService(new Intent(FeatureActivity.this, SpeakerService.class));
-                    
-                }
-            }
-        });
-        
-        if ( !SpeakerService.is_running() ) {
-        	btn_speaker.setChecked(false);
-            
-        } else {
-        	btn_speaker.setChecked(true);
-            
-        }
-        
-        Button btn_detach = (Button)findViewById(R.id.btn_deregister);
-        btn_detach.setOnClickListener(new View.OnClickListener () {
-            @Override
-            public void onClick (View v) {
-                logging("Request GSensorService stop");
-                getApplicationContext().stopService(new Intent(FeatureActivity.this, AccelerometerService.class));
-                logging("Request MicService stop");
-                getApplicationContext().stopService(new Intent(FeatureActivity.this, MicService.class));
-                logging("Request SpeakerService stop");
-                getApplicationContext().stopService(new Intent(FeatureActivity.this, SpeakerService.class));
-
-        		DAN.deregister();
-        		DAN.shutdown();
-        		remove_all_notification();
-                finish();
-            }
-        });
-        
-        // initialize DAN
-        DAN.init(C.dm_name);
-        
-        ec_status_handler = new DAN.Subscriber () {
-    	    public void odf_handler (final DAN.ODFObject odf_object) {
-    	    	runOnUiThread(new Thread () {
-    	    		@Override
-    	    		public void run () {
-	    	    		switch (odf_object.event_tag) {
-	        	        case REGISTER_FAILED:
-	        	        	show_ec_status_on_ui(odf_object.message, false);
-	        	        	show_ec_status_on_notification(odf_object.message, false);
-	        	        	break;
-	        	        	
-	        	        case REGISTER_SUCCEED:
-	        	        	show_ec_status_on_ui(odf_object.message, true);
-	        	        	show_ec_status_on_notification(odf_object.message, true);
-	        	        	String d_name = DAN.get_d_name();
-	        	        	logging("Get d_name:"+ d_name);
-	        				TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
-	        				tv_d_name.setText(d_name);
-	        				break;
-	        	        }
-    	    		}
-    	    	});
-    	    }
-    	};
-    	DAN.subscribe("Control_channel", ec_status_handler);
+        setContentView(R.layout.activity_feature);
         
     	if (!DAN.session_status()) {
-	        JSONObject profile = new JSONObject();
-	        try {
-		        profile.put("d_name", "Android"+ DAN.get_clean_mac_addr(get_mac_addr()));
-		        profile.put("dm_name", C.dm_name);
-		        JSONArray feature_list = new JSONArray();
-		        for (String f: C.df_list) {
-		        	feature_list.put(f);
-		        }
-		        profile.put("df_list", feature_list);
-		        profile.put("u_name", C.u_name);
-		        profile.put("monitor", DAN.get_clean_mac_addr(get_mac_addr()));
-		        DAN.register(DAN.get_d_id(get_mac_addr()), profile);
-			} catch (JSONException e) {
-				e.printStackTrace();
-			}
-    	} else {
-    		show_ec_status_on_ui(DAN.ec_endpoint(), DAN.session_status());
+    		Intent intent = new Intent(FeatureActivity.this, SelectECActivity.class);
+            startActivity(intent);
+            finish();
     	}
-    	
-    	String d_name = DAN.get_d_name();
-    	logging("Get d_name: "+ d_name);
-		TextView tv_d_name = (TextView)findViewById(R.id.tv_d_name);
-		tv_d_name.setText(d_name);
+        
+        final ActionBar actionbar = getActionBar();
+        actionbar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
 
-    }
-    
-    public void show_ec_status_on_ui (String host, boolean ec_status) {
-		((TextView)findViewById(R.id.tv_ec_host_address)).setText(host);
-		TextView tv_ec_host_status = (TextView)findViewById(R.id.tv_ec_host_status);
-		String status_text = "";
-		int status_color = Color.rgb(0, 0, 0);
-		if (ec_status) {
-			status_text = "~";
-			status_color = Color.rgb(0, 128, 0);
-		} else {
-			status_text = "!";
-			status_color = Color.rgb(128, 0, 0);
-		}
-		tv_ec_host_status.setText(status_text);
-		tv_ec_host_status.setTextColor(status_color);
+        switch_feature_fragment = (SwitchFeatureFragment) fragment_manager.findFragmentById(R.id.frag_features);
+        chart_fragment = (ChartFragment) fragment_manager.findFragmentById(R.id.frag_display_feature_list);
+        
+        ActionBar.TabListener tablistener = new ActionBar.TabListener () {
+    		@Override
+    		public void onTabSelected(Tab tab, FragmentTransaction ft) {
+    			switch ((String) tab.getText()) {
+    			case TITLE_FEATURES:
+    				ft.show(switch_feature_fragment);
+    				DAN.unsubscribe("Display");
+    				current_tab = TAB.FEATURES;
+    		        actionbar.setHomeButtonEnabled(false);
+    				actionbar.setDisplayHomeAsUpEnabled(false);
+    				break;
+    			case TITLE_DISPLAY:
+    				ft.show(chart_fragment);
+    				DAN.subscribe("Display", display_subscriber);
+    				current_tab = TAB.DISPLAY;
+    				boolean show_home_as_up = (chart_fragment.current_page() == ChartFragment.PAGE.DATA);
+    		        actionbar.setHomeButtonEnabled(show_home_as_up);
+					actionbar.setDisplayHomeAsUpEnabled(show_home_as_up);
+    				break;
+    			}
+    		}
 
-    }
-    
-    private void show_ec_status_on_notification (String host, boolean status) {
-        String text = status ? host : "Connecting";
-        NotificationManager notification_manager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
-        Notification.Builder notification_builder =
-                new Notification.Builder(this)
-                        .setSmallIcon(R.drawable.ic_launcher)
-                        .setContentTitle(C.dm_name)
-                        .setContentText(text);
+    		@Override
+    		public void onTabUnselected(Tab tab, FragmentTransaction ft) {
+    			switch ((String) tab.getText()) {
+    			case TITLE_FEATURES:
+    				ft.hide(switch_feature_fragment);
+    				break;
+    			case TITLE_DISPLAY:
+    				ft.hide(chart_fragment);
+    				break;
+    			}
+    		}
 
-        PendingIntent pending_intent = PendingIntent.getActivity(
-                this, 0,
-                new Intent(this, MainActivity.class),
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
+    		@Override
+    		public void onTabReselected(Tab tab, FragmentTransaction ft) {
+    		}
+    	};
 
-        notification_builder.setContentIntent(pending_intent);
-        notification_manager.notify(NOTIFICATION_ID, notification_builder.build());
-    }
-    
-    private void remove_all_notification () {
-    	NotificationManager notification_manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-    	notification_manager.cancelAll();
-    }
+    	actionbar.addTab(actionbar.newTab().setText(TITLE_FEATURES).setTabListener(tablistener));
+    	actionbar.addTab(actionbar.newTab().setText(TITLE_DISPLAY).setTabListener(tablistener));
+        
+    	DAN.subscribe("Control_channel", event_subscriber);
 
-    public String get_mac_addr () {
-        logging("get_mac_addr()");
-
-        // Generate error mac address
-        final Random rn = new Random();
-        String ret = "E2202";
-        for (int i = 0; i < 7; i++) {
-        	ret += "0123456789ABCDEF".charAt(rn.nextInt(16));
-        }
-
-        WifiManager wifiMan = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
-        if (wifiMan == null) {
-            logging("Cannot get WiFiManager system service");
-            return ret;
-        }
-
-        WifiInfo wifiInf = wifiMan.getConnectionInfo();
-        if (wifiInf == null) {
-            logging("Cannot get connection info");
-            return ret;
-        }
-
-        return wifiInf.getMacAddress();
-    }
-    
-    @Override
-    public void onConfigurationChanged (Configuration newConfig) {
-        // to prevent "screen rotate caused onCreate being called again"
-    }
-    
-    @Override
-    public void onPause () {
-    	super.onPause();
-    	if (isFinishing()) {
-    		DAN.unsubcribe(ec_status_handler);
-    	}
-    }
-    
-    public void logging (String message) {
-        Log.i(C.log_tag, "[FeatureActivity] " + message);
+    	switch_feature_fragment.show_d_name_on_ui(DAN.get_d_name());
+		switch_feature_fragment.show_ec_status_on_ui(DAN.ec_endpoint(), DAN.session_status());
     }
 	
+	@Override
+	public void onPause () {
+    	super.onPause();
+		if (current_tab == TAB.DISPLAY) {
+			DAN.unsubscribe("Display");
+		}
+	}
+	
+	@Override
+	public void onResume () {
+		super.onResume();
+		if (current_tab == TAB.DISPLAY) {
+			DAN.subscribe("Display", display_subscriber);
+		}
+	}
+    
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        menu.clear();
+        menu.add(0, MENU_ITEM_ID_DAN_VERSION, 0, "DAN Version: "+ DAN.version);
+        menu.add(0, MENU_ITEM_ID_DAI_VERSION, 0, "DAI Version: "+ version);
+        menu.add(0, MENU_ITEM_REQUEST_INTERVAL, 0, "Request Interval: "+ DAN.get_request_interval() +" ms");
+        menu.add(0, MENU_ITEM_REREGISTER, 0, "Reregsiter to another EC");
+        return super.onPrepareOptionsMenu(menu);
+    }
+    
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        switch (item.getItemId()) {
+        case MENU_ITEM_REQUEST_INTERVAL:
+        	show_input_dialog("Change Request Interval", "Input a integer as request interval (unit: ms)", ""+ DAN.get_request_interval());
+            break;
+        case MENU_ITEM_REREGISTER:
+        	show_selection_dialog("Reregister to EC", DAN.available_ec());
+        	break;
+        case android.R.id.home:
+        	onBackPressed();
+        	break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+	
+	@Override
+	public void onBackPressed() {
+		if (current_tab == TAB.FEATURES) {
+			finish();
+		} else if (chart_fragment.current_page() == ChartFragment.PAGE.LIST) {
+			finish();
+		} else {
+			chart_fragment.show_page(ChartFragment.PAGE.LIST);
+		}
+	}
+    
+	public void shutdown() {
+		DAN.deregister();
+		DAN.shutdown();
+		Utils.remove_all_notification(FeatureActivity.this);
+        finish();
+	}
+	
+	class EventSubscriber extends DAN.Subscriber {
+	    public void odf_handler (final DAN.ODFObject odf_object) {
+	    	runOnUiThread(new Thread () {
+	    		@Override
+	    		public void run () {
+    	    		switch (odf_object.event_tag) {
+        	        case REGISTER_FAILED:
+        	        	switch_feature_fragment.show_ec_status_on_ui(odf_object.message, false);
+        	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, false);
+        	        	break;
+        	        	
+        	        case REGISTER_SUCCEED:
+        	        	switch_feature_fragment.show_ec_status_on_ui(odf_object.message, true);
+        	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, true);
+        	        	String d_name = DAN.get_d_name();
+        	        	logging("Get d_name:"+ d_name);
+        				TextView tv_d_name = (TextView)findViewById(R.id.tv_item_d_name);
+        				tv_d_name.setText(d_name);
+        				break;
+        	        }
+	    		}
+	    	});
+	    }
+	};
+	
+	class ODFSubscriber extends DAN.Subscriber {
+	    public void odf_handler (final DAN.ODFObject odf_object) {
+	    	// send feature list to display_device_list_fragment
+			runOnUiThread(new Thread () {
+				@Override
+				public void run () {
+					try {
+						JSONObject newest_data = odf_object.dataset.newest().data.getJSONObject(0);
+						chart_fragment.set_newest_metadata(newest_data);
+					} catch (JSONException e) {
+						e.printStackTrace();
+					}
+				}
+			});
+	    	
+	    	// send feature data to display_feature_data_fragment
+	    }
+	};
+
+    private void show_input_dialog (String title, String message, String hint) {
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        dialog.setTitle(title);
+        dialog.setMessage(message);
+
+        final EditText input = new EditText(this);
+        input.setHint(hint);
+        input.setRawInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        dialog.setView(input);
+        
+        dialog.setPositiveButton("OK", new DialogInterface.OnClickListener () {
+            public void onClick (DialogInterface dialog, int id) {
+                String value = input.getText().toString();
+                try {
+                	DAN.set_request_interval(Integer.parseInt(value));
+                } catch (NumberFormatException e) {
+                	logging("Input is not a integer");
+                }
+            }
+        });
+
+        dialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener () {
+            public void onClick (DialogInterface dialog, int id) {
+                dialog.cancel();
+            }
+        });
+
+        dialog.create().show();
+    }
+
+    private void show_selection_dialog (String title, String[] available_ec) {
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        dialog.setTitle(title);
+        final ArrayAdapter<String> array_adapter = new ArrayAdapter<String>(
+        		this,
+                android.R.layout.select_dialog_item);
+        array_adapter.addAll(available_ec);
+        
+        dialog.setAdapter(array_adapter, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String which_ec = array_adapter.getItem(which);
+                logging("selected: "+ which_ec);
+                DAN.reregister(which_ec);
+            }
+        });
+        dialog.create().show();
+    }
+	
+	public enum TAB {
+		FEATURES, DISPLAY,
+	}
+    
+    static public void logging (String message) {
+        Log.i(Constants.log_tag, "[FeatureActivity] " + message);
+    }
+
 }

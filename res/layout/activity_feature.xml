@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="5dp" >
+    
+    <fragment
+        android:name="com.example.smartphone.SwitchFeatureFragment"
+		android:id="@+id/frag_features"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent" />
+    
+    <fragment
+        android:name="com.example.smartphone.ChartFragment"
+		android:id="@+id/frag_display_feature_list"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent" />
+    
+</LinearLayout>

@@ -113,6 +113,6 @@ public class AccelerometerService extends Service implements SensorEventListener
     }
 
     private void logging (String message) {
-        Log.i(C.log_tag, "[AccelerometerService] " + message);
+        Log.i(Constants.log_tag, "[AccelerometerService] " + message);
     }
 }

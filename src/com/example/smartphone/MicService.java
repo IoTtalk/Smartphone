@@ -164,7 +164,7 @@ public class MicService extends Service {
 
     private void logging (String message) {
         
-        Log.i(C.log_tag, "[MicService] " + message);
+        Log.i(Constants.log_tag, "[MicService] " + message);
     }
     
 }
