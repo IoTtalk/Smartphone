@@ -23,12 +23,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 public class FeatureActivity extends Activity {
-	final String version = "20160408";
-    
-    final int MENU_ITEM_ID_DAN_VERSION = 0;
-    final int MENU_ITEM_ID_DAI_VERSION = 1;
-    final int MENU_ITEM_REQUEST_INTERVAL = 2;
-    final int MENU_ITEM_REREGISTER = 3;
 	
     final String TITLE_FEATURES = "Features";
     final String TITLE_DISPLAY = "Display";
@@ -126,10 +120,10 @@ public class FeatureActivity extends Activity {
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         menu.clear();
-        menu.add(0, MENU_ITEM_ID_DAN_VERSION, 0, "DAN Version: "+ DAN.version);
-        menu.add(0, MENU_ITEM_ID_DAI_VERSION, 0, "DAI Version: "+ version);
-        menu.add(0, MENU_ITEM_REQUEST_INTERVAL, 0, "Request Interval: "+ DAN.get_request_interval() +" ms");
-        menu.add(0, MENU_ITEM_REREGISTER, 0, "Reregsiter to another EC");
+        menu.add(0, Constants.MENU_ITEM_ID_DAN_VERSION, 0, "DAN Version: "+ DAN.version);
+        menu.add(0, Constants.MENU_ITEM_ID_DAI_VERSION, 0, "DAI Version: "+ Constants.version);
+        menu.add(0, Constants.MENU_ITEM_REQUEST_INTERVAL, 0, "Request Interval: "+ DAN.get_request_interval() +" ms");
+        menu.add(0, Constants.MENU_ITEM_REREGISTER, 0, "Reregsiter to another EC");
         return super.onPrepareOptionsMenu(menu);
     }
     
@@ -139,10 +133,10 @@ public class FeatureActivity extends Activity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
-        case MENU_ITEM_REQUEST_INTERVAL:
+        case Constants.MENU_ITEM_REQUEST_INTERVAL:
         	show_input_dialog("Change Request Interval", "Input a integer as request interval (unit: ms)", ""+ DAN.get_request_interval());
             break;
-        case MENU_ITEM_REREGISTER:
+        case Constants.MENU_ITEM_REREGISTER:
         	show_selection_dialog("Reregister to EC", DAN.available_ec());
         	break;
         case android.R.id.home:

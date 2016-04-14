@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -190,6 +191,14 @@ public class SelectECActivity extends Activity {
         }
 		adapter.notifyDataSetChanged();
 	}
+    
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        menu.clear();
+        menu.add(0, Constants.MENU_ITEM_ID_DAN_VERSION, 0, "DAN Version: "+ DAN.version);
+        menu.add(0, Constants.MENU_ITEM_ID_DAI_VERSION, 0, "DAI Version: "+ Constants.version);
+        return super.onPrepareOptionsMenu(menu);
+    }
     
     static public void logging (String message) {
         Log.i(Constants.log_tag, "[SelectECActivity] " + message);
