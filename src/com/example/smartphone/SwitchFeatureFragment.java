@@ -126,9 +126,8 @@ public class SwitchFeatureFragment extends Fragment {
     }
     
     public void show_wifi_ssid_on_ui () {
-        final WifiManager wifiManager = (WifiManager) getActivity().getSystemService("wifi");
-        final WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-    	((TextView) root_view.findViewById(R.id.tv_wifi_ssid)).setText(wifiInfo.getSSID());
+    	String wifi_ssid = Utils.get_wifi_ssid(getActivity());
+    	((TextView) root_view.findViewById(R.id.tv_wifi_ssid)).setText(wifi_ssid);
     }
     
     static public void logging (String message) {

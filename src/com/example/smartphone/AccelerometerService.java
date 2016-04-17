@@ -58,9 +58,9 @@ public class AccelerometerService extends Service implements SensorEventListener
             mSensor = mSensorManager.getDefaultSensor(SENSOR_TYPE);
             if ( mSensor != null ) {
                 mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_GAME);
-                logging("Acceleration available");
+                logging("Accelerometer available");
             } else {
-                logging("Acceleration not available");
+                logging("Accelerometer not available");
                 return Service.START_NOT_STICKY;
             }
         	working = true;

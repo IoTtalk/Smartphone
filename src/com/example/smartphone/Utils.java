@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
+import android.widget.TextView;
 
 public class Utils {
 	static final int NOTIFICATION_ID = 1;
@@ -60,6 +61,12 @@ public class Utils {
     static public void remove_all_notification (Context context) {
     	NotificationManager notification_manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
     	notification_manager.cancelAll();
+    }
+    
+    static public String get_wifi_ssid (Context context) {
+        final WifiManager wifiManager = (WifiManager) context.getSystemService("wifi");
+        final WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+    	return wifiInfo.getSSID();
     }
     
     static public void logging (String message) {

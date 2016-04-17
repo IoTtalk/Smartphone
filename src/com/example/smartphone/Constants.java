@@ -1,7 +1,7 @@
 package com.example.smartphone;
 
 public class Constants {
-	static public final String version = "20160414";
+	static public final String version = "20160417";
     
     static public final String dm_name = "Smartphone";
     static public final String[] df_list = new String[]{"Display", "Acceleration", "Microphone", "Raw-mic", "Speaker"};
@@ -13,5 +13,6 @@ public class Constants {
     static public final int MENU_ITEM_ID_DAI_VERSION = 1;
     static public final int MENU_ITEM_REQUEST_INTERVAL = 2;
     static public final int MENU_ITEM_REREGISTER = 3;
+    static public final int MENU_ITEM_WIFI_SSID = 4;
     
 }
