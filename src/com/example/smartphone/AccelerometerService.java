@@ -80,20 +80,12 @@ public class AccelerometerService extends Service implements SensorEventListener
             return;
         }
 
-        float data_x = event.values[0];
-        float data_y = event.values[1];
-        float data_z = event.values[2];
-
-        JSONArray data = new JSONArray();
-        try {
-            data.put(data_x);
-            data.put(data_y);
-            data.put(data_z);
-            DAN.push("Acceleration", data);
-            logging(String.format("push(%.10f, %.10f, %.10f)", data_x, data_y, data_z));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+        float[] data = new float[3];
+        data[0] = event.values[0];
+        data[1] = event.values[1];
+        data[2] = event.values[2];
+        DAN.push("Acceleration", data);
+        logging(String.format("push(%.10f, %.10f, %.10f)", data[0], data[1], data[2]));
     }
 
     @Override
