@@ -1,8 +1,5 @@
 package com.example.smartphone;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-
 import DAN.DAN;
 import android.app.Service;
 import android.content.Intent;
@@ -15,6 +12,8 @@ import android.os.IBinder;
 import android.util.Log;
 
 public class AccelerometerService extends Service implements SensorEventListener {
+	static final String local_tag = AccelerometerService.class.getSimpleName();
+	
     static final int SENSOR_TYPE = Sensor.TYPE_ACCELEROMETER;
     private SensorManager mSensorManager;
     private Sensor mSensor;
@@ -33,7 +32,7 @@ public class AccelerometerService extends Service implements SensorEventListener
     public AccelerometerService () {
         running = true;
         working = false;
-        logging("constructor");
+        Utils.logging(local_tag, "constructor");
     }
     
     static boolean is_running () {
@@ -45,27 +44,27 @@ public class AccelerometerService extends Service implements SensorEventListener
         running = true;
         working = false;
         timestamp = 0;
-        logging("onCreate");
+        Utils.logging(local_tag, "onCreate");
         
     }
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        logging("onStartCommand");
+        Utils.logging(local_tag, "onStartCommand");
         if ( !working ) {
-            logging("getting phone sensor service");
+            Utils.logging(local_tag, "getting phone sensor service");
             mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
             mSensor = mSensorManager.getDefaultSensor(SENSOR_TYPE);
             if ( mSensor != null ) {
                 mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_GAME);
-                logging("Accelerometer available");
+                Utils.logging(local_tag, "Accelerometer available");
             } else {
-                logging("Accelerometer not available");
+                Utils.logging(local_tag, "Accelerometer not available");
                 return Service.START_NOT_STICKY;
             }
         	working = true;
         } else {
-            logging("already initialized");
+            Utils.logging(local_tag, "already initialized");
         }
         return Service.START_NOT_STICKY;
     }
@@ -85,7 +84,7 @@ public class AccelerometerService extends Service implements SensorEventListener
         data[1] = event.values[1];
         data[2] = event.values[2];
         DAN.push("Acceleration", data);
-        logging(String.format("push(%.10f, %.10f, %.10f)", data[0], data[1], data[2]));
+        Utils.logging(local_tag, "push(%3.10f, %3.10f, %3.10f)", data[0], data[1], data[2]);
     }
 
     @Override
@@ -102,9 +101,5 @@ public class AccelerometerService extends Service implements SensorEventListener
         working = false;
         mSensorManager.unregisterListener(this, mSensor);
         
-    }
-
-    private void logging (String message) {
-        Log.i(Constants.log_tag, "[AccelerometerService] " + message);
     }
 }

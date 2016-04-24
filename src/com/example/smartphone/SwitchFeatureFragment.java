@@ -18,6 +18,8 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 
 public class SwitchFeatureFragment extends Fragment {
+	static final String local_tag = SwitchFeatureFragment.class.getSimpleName();
+	
 	View root_view;
 	FeatureActivity coordinator;
 	
@@ -31,10 +33,10 @@ public class SwitchFeatureFragment extends Fragment {
         btn_asensor.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    logging("Request AccelerometerService to start");
+                    Utils.logging(local_tag, "Request AccelerometerService to start");
                     getActivity().getApplicationContext().startService(new Intent(getActivity(), AccelerometerService.class));
                 } else {
-                    logging("Request AccelerometerService to stop");
+                    Utils.logging(local_tag, "Request AccelerometerService to stop");
                     getActivity().getApplicationContext().stopService(new Intent(getActivity(), AccelerometerService.class));
                 }
             }
@@ -45,11 +47,11 @@ public class SwitchFeatureFragment extends Fragment {
         btn_mic.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    logging("Request MicService to start");
+                    Utils.logging(local_tag, "Request MicService to start");
                     getActivity().getApplicationContext().startService(new Intent(getActivity(), MicService.class));
                     
                 } else {
-                    logging("Request MicService to stop");
+                    Utils.logging(local_tag, "Request MicService to stop");
                     getActivity().getApplicationContext().stopService(new Intent(getActivity(), MicService.class));
                     
                 }
@@ -61,11 +63,11 @@ public class SwitchFeatureFragment extends Fragment {
         btn_speaker.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
-                    logging("Request SpeakerService to start");
+                    Utils.logging(local_tag, "Request SpeakerService to start");
                     getActivity().getApplicationContext().startService(new Intent(getActivity(), SpeakerService.class));
                     
                 } else {
-                    logging("Request SpeakerService to stop");
+                    Utils.logging(local_tag, "Request SpeakerService to stop");
                     getActivity().getApplicationContext().stopService(new Intent(getActivity(), SpeakerService.class));
                     
                 }
@@ -76,11 +78,11 @@ public class SwitchFeatureFragment extends Fragment {
         btn_deregister.setOnClickListener(new View.OnClickListener () {
             @Override
             public void onClick (View v) {
-                logging("Request AccelerometerService to stop");
+                Utils.logging(local_tag, "Request AccelerometerService to stop");
                 getActivity().getApplicationContext().stopService(new Intent(getActivity(), AccelerometerService.class));
-                logging("Request MicService to stop");
+                Utils.logging(local_tag, "Request MicService to stop");
                 getActivity().getApplicationContext().stopService(new Intent(getActivity(), MicService.class));
-                logging("Request SpeakerService to stop");
+                Utils.logging(local_tag, "Request SpeakerService to stop");
                 getActivity().getApplicationContext().stopService(new Intent(getActivity(), SpeakerService.class));
                 if (coordinator != null) {
                 	coordinator.shutdown();
@@ -128,9 +130,5 @@ public class SwitchFeatureFragment extends Fragment {
     public void show_wifi_ssid_on_ui () {
     	String wifi_ssid = Utils.get_wifi_ssid(getActivity());
     	((TextView) root_view.findViewById(R.id.tv_wifi_ssid)).setText(wifi_ssid);
-    }
-    
-    static public void logging (String message) {
-        Log.i(Constants.log_tag, "[FeatureFragment] " + message);
     }
 }

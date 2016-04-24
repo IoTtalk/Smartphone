@@ -25,20 +25,22 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class SelectECActivity extends Activity {
+	static final String local_tag = SelectECActivity.class.getSimpleName();
+	
 	final ArrayList<ECListItem> ec_endpoint_list = new ArrayList<ECListItem>();
     ArrayAdapter<ECListItem> adapter;
 	final DAN.Subscriber event_subscriber = new EventSubscriber();
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        logging("================== SelectECActivity start ==================");
+        Utils.logging(local_tag, "========== SelectECActivity start ==========");
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_ec_list);
 
         DAN.init(Constants.log_tag);
         if (DAN.session_status()) {
-        	logging("Already registered, jump to SessionActivity");
+        	Utils.logging(local_tag, "Already registered, jump to SessionActivity");
             Intent intent = new Intent(SelectECActivity.this, FeatureActivity.class);
             startActivity(intent);
             finish();
@@ -97,7 +99,7 @@ public class SelectECActivity extends Activity {
 	    public void odf_handler (final DAN.ODFObject odf_object) {
 	    	switch (odf_object.event_tag) {
 			case FOUND_NEW_EC:
-				logging("FOUND_NEW_EC: "+ odf_object.message);
+				Utils.logging(local_tag, "FOUND_NEW_EC: %s", odf_object.message);
 				ec_endpoint_list.add(new ECListItem(odf_object.message));
     	    	runOnUiThread(new Thread () {
     	    		@Override
@@ -200,9 +202,4 @@ public class SelectECActivity extends Activity {
         menu.add(0, Constants.MENU_ITEM_WIFI_SSID, 0, "WiFi: "+ Utils.get_wifi_ssid(getApplicationContext()));
         return super.onPrepareOptionsMenu(menu);
     }
-    
-    static public void logging (String message) {
-        Log.i(Constants.log_tag, "[SelectECActivity] " + message);
-    }
-
 }

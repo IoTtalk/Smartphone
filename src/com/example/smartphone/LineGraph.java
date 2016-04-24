@@ -16,6 +16,7 @@ import android.graphics.Color;
 import android.util.Log;
 
 public class LineGraph {
+	static final String local_tag = LineGraph.class.getSimpleName();
 
 	private GraphicalView view;
 
@@ -81,7 +82,7 @@ public class LineGraph {
 	
 	public void add_new_point (JSONArray data) throws JSONException {
 		if (data.length() == 0) {
-			logging("No input data?");
+			Utils.logging(local_tag, "No input data?");
 			return;
 		}
 		
@@ -93,17 +94,17 @@ public class LineGraph {
 				if (tmp.get(single_key) instanceof JSONArray) {
 					data = tmp.getJSONArray(single_key);
 				} else {
-					logging("Input data too complicated");
+					Utils.logging(local_tag, "Input data too complicated");
 					return;
 				}
 			} else {
-				logging("Input data too complicated");
+				Utils.logging(local_tag, "Input data too complicated");
 				return;
 			}
 		}
 		
 		if (data.length() > available_colors.length) {
-			logging("Input data dimension too high, abort");
+			Utils.logging(local_tag, "Input data dimension too high, abort");
 			return;
 		}
 			
@@ -140,9 +141,5 @@ public class LineGraph {
 	public void reset_y_max () {
 		y_min_max_set = false;
 	}
-    
-    static public void logging (String message) {
-        Log.i(Constants.log_tag, "[LineGraph] " + message);
-    }
 	
 }

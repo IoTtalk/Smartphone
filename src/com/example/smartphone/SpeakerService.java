@@ -16,6 +16,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 public class SpeakerService extends Service {
+	static final String local_tag = SpeakerService.class.getSimpleName();
     
     static private boolean running = false;
     static private boolean working = false;
@@ -40,7 +41,7 @@ public class SpeakerService extends Service {
         working = false;
         data_handler = null;
         handler_thread = null;
-        logging("constructor");
+        Utils.logging(local_tag, "constructor");
     }
     
     static boolean is_running () {
@@ -51,7 +52,7 @@ public class SpeakerService extends Service {
     public void onCreate () {
         running = true;
         working = false;
-        logging("onCreate");
+        Utils.logging(local_tag, "onCreate");
         
         sound_name_table = new HashMap<String, Integer>();
         sound_name_table.put("Do-", 262);
@@ -97,9 +98,9 @@ public class SpeakerService extends Service {
             	public void odf_handler (DAN.ODFObject odf_object) {
             		DAN.DataSet ds = odf_object.dataset;
             		try {
-                		logging(ds.timestamp +": "+ ((JSONArray)(ds.newest().data)).getInt(0));
+                		Utils.logging(local_tag, "%s: %d", ds.timestamp, ((JSONArray)(ds.newest().data)).getInt(0));
                 		int new_sound_Hz = get_sound_rate(((JSONArray)(ds.newest().data)).getInt(0));
-                		logging("new_sound_Hz: "+ new_sound_Hz);
+                		Utils.logging(local_tag, "new_sound_Hz: %d", new_sound_Hz);
 						if ( current_sound_Hz != new_sound_Hz ) {
 							if (current_sound_Hz == 0) {
 								ATM.isPlaySound = false;
@@ -112,14 +113,14 @@ public class SpeakerService extends Service {
 					        ATM.playSound();
 						}
 					} catch (JSONException e) {
-						e.printStackTrace();
+						Utils.logging(local_tag, "JSONException");
 					}
         	    }
             };
             DAN.subscribe("Speaker", handler);
             
         } else {
-            logging("already initialized");
+            Utils.logging(local_tag, "already initialized");
             
         }
         return Service.START_NOT_STICKY;
@@ -155,10 +156,6 @@ public class SpeakerService extends Service {
         DAN.unsubscribe("Speaker");
 		ATM.isPlaySound = false;
 		ATM.stop();
-    }
-
-    private void logging (String message) {
-        Log.i(Constants.log_tag, "[SpeakerService] " + message);
     }
     
 }

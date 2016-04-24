@@ -16,8 +16,9 @@ import android.os.IBinder;
 import android.util.Log;
 
 public class MicService extends Service {
+	static final String local_tag = MicService.class.getSimpleName();
+	
     long timestamp;
-    
     static private boolean running = false;
     static private boolean working = false;
     HandlerThread handler_thread;
@@ -35,7 +36,7 @@ public class MicService extends Service {
         working = false;
         data_handler = null;
         handler_thread = null;
-        logging("constructor");
+        Utils.logging(local_tag, "constructor");
     }
     
     static boolean is_running () {
@@ -47,17 +48,16 @@ public class MicService extends Service {
         running = true;
         working = false;
         timestamp = 0;
-        logging("onCreate");
+        Utils.logging(local_tag, "onCreate");
         
     }
     
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if ( !working ) {
-            logging("MicRecordThread start");
             new MicRecordThread().start();
         } else {
-            logging("already initialized");
+            Utils.logging(local_tag, "already initialized");
         }
         return Service.START_NOT_STICKY;
     }
@@ -89,6 +89,7 @@ public class MicService extends Service {
 	
 	    @Override
 	    public void run() {
+            Utils.logging(local_tag, "MicRecordThread starts");
 	        try {
 	        	if (working) { return; }
 	            working = true;
@@ -132,7 +133,7 @@ public class MicService extends Service {
 	                //if (total > BLOW_ACTIVI)
 	                if ( dB >= 0 && dB <= 250 ) {
 	                	DAN.push("Microphone", dB * 10);
-	                	logging("push_data(\"Microphone\", ["+ (dB * 10) +"])");
+	                	Utils.logging(local_tag, "push_data(\"Microphone\", ["+ (dB * 10) +"])");
 	                    number = 1;
 	                    tal = 1;
 	                    time = 1;
@@ -145,8 +146,9 @@ public class MicService extends Service {
 	            bs=100;
 	
 	        } catch (Exception e) {
-	            e.printStackTrace();
+	            Utils.logging(local_tag, "Exception");
 	        }
+            Utils.logging(local_tag, "MicRecordThread ends");
 	    }
 	}
 
@@ -159,12 +161,6 @@ public class MicService extends Service {
     public void onDestroy () {
         running = false;
         working = false;
-        
-    }
-
-    private void logging (String message) {
-        
-        Log.i(Constants.log_tag, "[MicService] " + message);
     }
     
 }

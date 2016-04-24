@@ -14,9 +14,10 @@ import android.widget.TextView;
 
 public class Utils {
 	static final int NOTIFICATION_ID = 1;
+	static final String local_tag = Utils.class.getSimpleName();
     
     static public String get_mac_addr (Context context) {
-        logging("get_mac_addr()");
+        logging(local_tag, "get_mac_addr()");
 
         // Generate error mac address
         final Random rn = new Random();
@@ -27,13 +28,13 @@ public class Utils {
 
         WifiManager wifiMan = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
         if (wifiMan == null) {
-            logging("Cannot get WiFiManager system service");
+            logging(local_tag, "Cannot get WiFiManager system service");
             return ret;
         }
 
         WifiInfo wifiInf = wifiMan.getConnectionInfo();
         if (wifiInf == null) {
-            logging("Cannot get connection info");
+            logging(local_tag, "Cannot get connection info");
             return ret;
         }
 
@@ -69,7 +70,11 @@ public class Utils {
     	return wifiInfo.getSSID();
     }
     
-    static public void logging (String message) {
-        Log.i(Constants.log_tag, "[Utils] " + message);
+    static public void logging (String local_tag, String format, Object... args) {
+        logging(local_tag, String.format(format, args));
+    }
+
+    static public void logging (String local_tag, String message) {
+        Log.i(Constants.log_tag, String.format("[%s][%s] %s%n", Constants.log_tag, local_tag, message));
     }
 }

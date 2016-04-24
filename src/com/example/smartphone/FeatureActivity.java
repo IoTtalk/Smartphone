@@ -23,6 +23,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 public class FeatureActivity extends Activity {
+	static final String local_tag = FeatureActivity.class.getSimpleName();
 	
     final String TITLE_FEATURES = "Features";
     final String TITLE_DISPLAY = "Display";
@@ -33,6 +34,10 @@ public class FeatureActivity extends Activity {
     ChartFragment chart_fragment;
 	final EventSubscriber event_subscriber = new EventSubscriber();
 	final ODFSubscriber display_subscriber = new ODFSubscriber();
+	
+	public enum TAB {
+		FEATURES, DISPLAY,
+	}
 	TAB current_tab;
 	
 	@Override
@@ -179,7 +184,7 @@ public class FeatureActivity extends Activity {
         	        	switch_feature_fragment.show_ec_status_on_ui(odf_object.message, true);
         	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, true);
         	        	String d_name = DAN.get_d_name();
-        	        	logging("Get d_name:"+ d_name);
+        	        	Utils.logging(local_tag, "Get d_name:"+ d_name);
         				TextView tv_d_name = (TextView)findViewById(R.id.tv_item_d_name);
         				tv_d_name.setText(d_name);
         				break;
@@ -224,7 +229,7 @@ public class FeatureActivity extends Activity {
                 try {
                 	DAN.set_request_interval(Integer.parseInt(value));
                 } catch (NumberFormatException e) {
-                	logging("Input is not a integer");
+                	Utils.logging(local_tag, "Input is not a integer");
                 }
             }
         });
@@ -250,19 +255,10 @@ public class FeatureActivity extends Activity {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 String which_ec = array_adapter.getItem(which);
-                logging("selected: "+ which_ec);
+                Utils.logging(local_tag, "Selected EC: "+ which_ec);
                 DAN.reregister(which_ec);
             }
         });
         dialog.create().show();
     }
-	
-	public enum TAB {
-		FEATURES, DISPLAY,
-	}
-    
-    static public void logging (String message) {
-        Log.i(Constants.log_tag, "[FeatureActivity] " + message);
-    }
-
 }

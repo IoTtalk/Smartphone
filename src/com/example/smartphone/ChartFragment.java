@@ -26,6 +26,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 public class ChartFragment extends Fragment {
+	static final String local_tag = ChartFragment.class.getSimpleName();
+	
 	FeatureActivity coordinator;
 	View root_view;
 	final ArrayList<FeatureMetaData> feature_metadata = new ArrayList<FeatureMetaData>();
@@ -117,7 +119,7 @@ public class ChartFragment extends Fragment {
 			    }
 			}
 	    } catch (JSONException e) {
-	    	logging("JSONException");
+	    	Utils.logging(local_tag, "JSONException");
             watching_f_name = "";
 	    }
 	    
@@ -215,9 +217,5 @@ public class ChartFragment extends Fragment {
         } catch (ClassCastException e) {
             throw new ClassCastException(activity.toString() + " must implement xxx");
         }
-    }
-    
-    static public void logging (String message) {
-        Log.i(Constants.log_tag, "[ChartFragment] " + message);
     }
 }
