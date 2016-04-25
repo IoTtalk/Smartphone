@@ -5,6 +5,7 @@ import java.util.HashMap;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import DAN.DAN;
 import android.app.Service;
@@ -94,30 +95,7 @@ public class SpeakerService extends Service {
         	working = true;
             ATM=new AudioTrackManager();
             current_sound_Hz = 0;
-            DAN.Subscriber handler = new DAN.Subscriber () {
-            	public void odf_handler (DAN.ODFObject odf_object) {
-            		DAN.DataSet ds = odf_object.dataset;
-            		try {
-                		Utils.logging(local_tag, "%s: %d", ds.timestamp, ((JSONArray)(ds.newest().data)).getInt(0));
-                		int new_sound_Hz = get_sound_rate(((JSONArray)(ds.newest().data)).getInt(0));
-                		Utils.logging(local_tag, "new_sound_Hz: %d", new_sound_Hz);
-						if ( current_sound_Hz != new_sound_Hz ) {
-							if (current_sound_Hz == 0) {
-								ATM.isPlaySound = false;
-								ATM.stop();
-							}
-							current_sound_Hz = new_sound_Hz;
-							ATM.setTone(current_sound_Hz);
-							ATM.genTone();
-							ATM.isPlaySound = true;
-					        ATM.playSound();
-						}
-					} catch (JSONException e) {
-						Utils.logging(local_tag, "JSONException");
-					}
-        	    }
-            };
-            DAN.subscribe("Speaker", handler);
+            DAN.subscribe("Speaker", new ODFSubscriber());
             
         } else {
             Utils.logging(local_tag, "already initialized");
@@ -125,6 +103,34 @@ public class SpeakerService extends Service {
         }
         return Service.START_NOT_STICKY;
     }
+
+    class ODFSubscriber extends DAN.Subscriber {
+        public void odf_handler (final String feature, final DAN.ODFObject odf_object) {
+            if (!feature.equals("Speaker")) {
+                Utils.logging(local_tag, "ODFSubscriber should only receive Speaker feature");
+                return;
+            }
+            DAN.DataSet ds = odf_object.dataset;
+            try {
+                Utils.logging(local_tag, "%s: %d", ds.timestamp, ((JSONArray)(ds.newest().data)).getInt(0));
+                int new_sound_Hz = get_sound_rate(((JSONArray)(ds.newest().data)).getInt(0));
+                Utils.logging(local_tag, "new_sound_Hz: %d", new_sound_Hz);
+                if ( current_sound_Hz != new_sound_Hz ) {
+                    if (current_sound_Hz == 0) {
+                        ATM.isPlaySound = false;
+                        ATM.stop();
+                    }
+                    current_sound_Hz = new_sound_Hz;
+                    ATM.setTone(current_sound_Hz);
+                    ATM.genTone();
+                    ATM.isPlaySound = true;
+                    ATM.playSound();
+                }
+            } catch (JSONException e) {
+                Utils.logging(local_tag, "JSONException");
+            }
+        }
+    };
     
     public int get_sound_rate (Object o) {
     	if ( o instanceof Integer ) {
