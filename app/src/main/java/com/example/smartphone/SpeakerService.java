@@ -110,10 +110,9 @@ public class SpeakerService extends Service {
                 Utils.logging(local_tag, "ODFSubscriber should only receive Speaker feature");
                 return;
             }
-            DAN.DataSet ds = odf_object.dataset;
             try {
-                Utils.logging(local_tag, "%s: %d", ds.timestamp, ((JSONArray)(ds.newest().data)).getInt(0));
-                int new_sound_Hz = get_sound_rate(((JSONArray)(ds.newest().data)).getInt(0));
+                Utils.logging(local_tag, "%s: %d", odf_object.timestamp, odf_object.data.getInt(0));
+                int new_sound_Hz = get_sound_rate(odf_object.data.getInt(0));
                 Utils.logging(local_tag, "new_sound_Hz: %d", new_sound_Hz);
                 if ( current_sound_Hz != new_sound_Hz ) {
                     if (current_sound_Hz == 0) {

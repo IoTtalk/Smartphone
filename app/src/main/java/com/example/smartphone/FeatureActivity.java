@@ -209,7 +209,7 @@ public class FeatureActivity extends Activity {
 				@Override
 				public void run () {
 					try {
-						JSONObject newest_data = odf_object.dataset.newest().data.getJSONObject(0);
+						JSONObject newest_data = odf_object.data.getJSONObject(0);
 						chart_fragment.set_newest_metadata(newest_data);
 					} catch (JSONException e) {
 						e.printStackTrace();
