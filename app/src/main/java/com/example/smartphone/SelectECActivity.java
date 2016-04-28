@@ -82,7 +82,7 @@ public class SelectECActivity extends Activity {
             }
         });
         
-    	DAN.subscribe(DAN.NAME_CONTROL_CHANNEL, event_subscriber);
+    	DAN.subscribe(DAN.CONTROL_CHANNEL, event_subscriber);
     }
     
     @Override
@@ -99,8 +99,8 @@ public class SelectECActivity extends Activity {
     
     class EventSubscriber extends DAN.Subscriber {
 	    public void odf_handler (final String feature, final DAN.ODFObject odf_object) {
-			if (!feature.equals(DAN.NAME_CONTROL_CHANNEL)) {
-				Utils.logging(local_tag, "EventSubscriber should only receive {} events", DAN.NAME_CONTROL_CHANNEL);
+			if (!feature.equals(DAN.CONTROL_CHANNEL)) {
+				Utils.logging(local_tag, "EventSubscriber should only receive {} events", DAN.CONTROL_CHANNEL);
 				return;
 			}
 	    	switch (odf_object.event_tag) {

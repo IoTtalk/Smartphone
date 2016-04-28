@@ -1,6 +1,5 @@
 package com.example.smartphone;
 
-import DAN.DAN;
 import android.app.Service;
 import android.content.Intent;
 import android.hardware.Sensor;
@@ -9,7 +8,11 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Binder;
 import android.os.IBinder;
-import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+
+import DAN.DAN;
 
 public class AccelerometerService extends Service implements SensorEventListener {
 	static final String local_tag = AccelerometerService.class.getSimpleName();
@@ -21,6 +24,28 @@ public class AccelerometerService extends Service implements SensorEventListener
     
     static private boolean running = false;
     static private boolean working = false;
+
+    static private final DAN.Reducer reducer = new DAN.Reducer() {
+        @Override
+        public JSONArray reduce(JSONArray a, JSONArray b, int index, int last_index) {
+            JSONArray ret = new JSONArray();
+            try {
+                if (index < last_index) {
+                    for (int i = 0; i < a.length(); i++) {
+                        ret.put(a.getDouble(i) + b.getDouble(i));
+                    }
+                } else {
+                    for (int i = 0; i < a.length(); i++) {
+                        ret.put((a.getDouble(i) + b.getDouble(i)) / ((double)last_index));
+                    }
+                }
+                return ret;
+            } catch (JSONException e) {
+                Utils.logging(local_tag, "Reducer: JSONException");
+            }
+            return null;
+        }
+    };
     
     private final IBinder mBinder = new MyBinder();
     public class MyBinder extends Binder {

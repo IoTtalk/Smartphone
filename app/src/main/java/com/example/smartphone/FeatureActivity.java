@@ -171,8 +171,8 @@ public class FeatureActivity extends Activity {
 	
 	class EventSubscriber extends DAN.Subscriber {
 	    public void odf_handler (final String feature, final DAN.ODFObject odf_object) {
-			if (!feature.equals(DAN.NAME_CONTROL_CHANNEL)) {
-                Utils.logging(local_tag, "EventSubscriber should only receive {} events", DAN.NAME_CONTROL_CHANNEL);
+			if (!feature.equals(DAN.CONTROL_CHANNEL)) {
+                Utils.logging(local_tag, "EventSubscriber should only receive {} events", DAN.CONTROL_CHANNEL);
                 return;
             }
 	    	runOnUiThread(new Thread () {
@@ -200,8 +200,8 @@ public class FeatureActivity extends Activity {
 	
 	class ODFSubscriber extends DAN.Subscriber {
 	    public void odf_handler (final String feature, final DAN.ODFObject odf_object) {
-            if (feature.equals(DAN.NAME_CONTROL_CHANNEL)) {
-                Utils.logging(local_tag, "ODFSubscriber should not receive {} events", DAN.NAME_CONTROL_CHANNEL);
+            if (feature.equals(DAN.CONTROL_CHANNEL)) {
+                Utils.logging(local_tag, "ODFSubscriber should not receive {} events", DAN.CONTROL_CHANNEL);
                 return;
             }
 	    	// send feature data to display_device_list_fragment
