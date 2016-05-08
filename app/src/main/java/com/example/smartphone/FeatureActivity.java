@@ -178,7 +178,7 @@ public class FeatureActivity extends Activity {
 	    	runOnUiThread(new Thread () {
 	    		@Override
 	    		public void run () {
-    	    		switch (odf_object.event_tag) {
+    	    		switch (odf_object.event) {
         	        case REGISTER_FAILED:
         	        	switch_feature_fragment.show_ec_status_on_ui(odf_object.message, false);
         	        	Utils.show_ec_status_on_notification(FeatureActivity.this, odf_object.message, false);

@@ -38,7 +38,7 @@ public class SelectECActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_ec_list);
 
-        DAN.init(Constants.log_tag);
+        DAN.init(Constants.log_tag, event_subscriber);
         if (DAN.session_status()) {
         	Utils.logging(local_tag, "Already registered, jump to SessionActivity");
             Intent intent = new Intent(SelectECActivity.this, FeatureActivity.class);
@@ -81,8 +81,6 @@ public class SelectECActivity extends Activity {
     	        Utils.show_ec_status_on_notification(SelectECActivity.this, EC_ENDPOINT, false);
             }
         });
-        
-    	DAN.subscribe(DAN.CONTROL_CHANNEL, event_subscriber);
     }
     
     @Override
@@ -103,7 +101,7 @@ public class SelectECActivity extends Activity {
 				Utils.logging(local_tag, "EventSubscriber should only receive {} events", DAN.CONTROL_CHANNEL);
 				return;
 			}
-	    	switch (odf_object.event_tag) {
+	    	switch (odf_object.event) {
 			case FOUND_NEW_EC:
 				Utils.logging(local_tag, "FOUND_NEW_EC: %s", odf_object.message);
 				ec_endpoint_list.add(new ECListItem(odf_object.message));
