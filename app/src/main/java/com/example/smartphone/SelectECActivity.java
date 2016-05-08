@@ -38,7 +38,8 @@ public class SelectECActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_ec_list);
 
-        DAN.init(Constants.log_tag, event_subscriber);
+		DAN.set_log_tag(Constants.log_tag);
+        DAN.init(event_subscriber);
         if (DAN.session_status()) {
         	Utils.logging(local_tag, "Already registered, jump to SessionActivity");
             Intent intent = new Intent(SelectECActivity.this, FeatureActivity.class);
