@@ -27,10 +27,10 @@ public class AccelerometerService extends Service implements SensorEventListener
 
     static private final DAN.Reducer reducer = new DAN.Reducer() {
         @Override
-        public JSONArray reduce(JSONArray a, JSONArray b, int index, int last_index) {
+        public JSONArray reduce(JSONArray a, JSONArray b, int b_index, int last_index) {
             JSONArray ret = new JSONArray();
             try {
-                if (index < last_index) {
+                if (b_index < last_index) {
                     for (int i = 0; i < a.length(); i++) {
                         ret.put(a.getDouble(i) + b.getDouble(i));
                     }
@@ -108,7 +108,7 @@ public class AccelerometerService extends Service implements SensorEventListener
         data[0] = event.values[0];
         data[1] = event.values[1];
         data[2] = event.values[2];
-        DAN.push("Acceleration", data);
+        DAN.push("Acceleration", data, reducer);
         Utils.logging(local_tag, "push(%3.10f, %3.10f, %3.10f)", data[0], data[1], data[2]);
     }
 
