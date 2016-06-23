@@ -6,6 +6,26 @@
     android:orientation="vertical"
     android:padding="5dp" >
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/et_endpoint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="localhost:9999"/>
+
+        <Button
+            android:id="@+id/btn_register"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Register">
+        </Button>
+    </LinearLayout>
+
     <ListView
         android:id="@+id/lv_available_ec_endpoints"
         android:layout_width="match_parent"

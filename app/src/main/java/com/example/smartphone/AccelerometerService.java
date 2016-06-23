@@ -14,16 +14,16 @@ import org.json.JSONException;
 
 import DAN.DAN;
 
-public class AccelerometerService extends Service implements SensorEventListener {
-	static final String local_tag = AccelerometerService.class.getSimpleName();
-	
-    static final int SENSOR_TYPE = Sensor.TYPE_ACCELEROMETER;
-    private SensorManager mSensorManager;
-    private Sensor mSensor;
-    long timestamp;
-    
-    static private boolean running = false;
-    static private boolean working = false;
+    public class AccelerometerService extends Service implements SensorEventListener {
+        static final String local_tag = AccelerometerService.class.getSimpleName();
+
+        static final int SENSOR_TYPE = Sensor.TYPE_ACCELEROMETER;
+        private SensorManager mSensorManager;
+        private Sensor mSensor;
+        long timestamp;
+
+        static private boolean running = false;
+        static private boolean working = false;
 
     static private final DAN.Reducer reducer = new DAN.Reducer() {
         @Override

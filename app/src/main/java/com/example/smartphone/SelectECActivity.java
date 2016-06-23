@@ -20,6 +20,8 @@ import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -60,28 +62,48 @@ public class SelectECActivity extends Activity {
             public void onItemClick(AdapterView<?> parent,
                     View view, int position, long id) {
             	ECListItem ec_list_item = ec_endpoint_list.get(position);
-            	String clean_mac_addr = DAN.get_clean_mac_addr(Utils.get_mac_addr(SelectECActivity.this));
-            	String EC_ENDPOINT = ec_list_item.ec_endpoint;
-            	JSONObject profile = new JSONObject();
-    	        try {
-    		        profile.put("d_name", "Android"+ clean_mac_addr);
-    		        profile.put("dm_name", Constants.dm_name);
-    		        JSONArray feature_list = new JSONArray();
-    		        for (String f: Constants.df_list) {
-    		        	feature_list.put(f);
-    		        }
-    		        profile.put("df_list", feature_list);
-    		        profile.put("u_name", Constants.u_name);
-    		        profile.put("monitor", clean_mac_addr);
-    	        	DAN.register(EC_ENDPOINT, clean_mac_addr, profile);
-    			} catch (JSONException e) {
-    				e.printStackTrace();
-    			}
+                register(ec_list_item.ec_endpoint);
     	        ec_list_item.status = ECListItem.Status.CONNECTING;
     	        adapter.notifyDataSetChanged();
-    	        Utils.show_ec_status_on_notification(SelectECActivity.this, EC_ENDPOINT, false);
+    	        Utils.show_ec_status_on_notification(SelectECActivity.this, ec_list_item.ec_endpoint, false);
             }
         });
+
+		Button btn_register = (Button)findViewById(R.id.btn_register);
+        btn_register.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                EditText et_endpoint = (EditText)findViewById(R.id.et_endpoint);
+                register(et_endpoint.getText().toString());
+            }
+        });
+    }
+
+    void register (String endpoint) {
+        if (!endpoint.startsWith("http://")) {
+            endpoint = "http://" + endpoint;
+        }
+
+        if (endpoint.length() - endpoint.replace(":", "").length() == 1) {
+            endpoint += ":9999";
+        }
+
+        JSONObject profile = new JSONObject();
+        String clean_mac_addr = DAN.get_clean_mac_addr(Utils.get_mac_addr(SelectECActivity.this));
+        try {
+            profile.put("d_name", "Android"+ clean_mac_addr);
+            profile.put("dm_name", Constants.dm_name);
+            JSONArray feature_list = new JSONArray();
+            for (String f: Constants.df_list) {
+                feature_list.put(f);
+            }
+            profile.put("df_list", feature_list);
+            profile.put("u_name", Constants.u_name);
+            profile.put("monitor", clean_mac_addr);
+            DAN.register(endpoint, clean_mac_addr, profile);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
     
     @Override
