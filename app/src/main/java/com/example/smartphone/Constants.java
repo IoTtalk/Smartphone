@@ -1,7 +1,7 @@
 package com.example.smartphone;
 
 public class Constants {
-	static public final String version = "20160428";
+	static public final String version = "20160703";
     
     static public final String dm_name = "Smartphone";
     static public final String[] df_list = new String[]{"Display", "Acceleration", "Microphone", "Raw-mic", "Speaker"};

@@ -69,10 +69,11 @@ public class SelectECActivity extends Activity {
             }
         });
 
-		Button btn_register = (Button)findViewById(R.id.btn_register);
+		final Button btn_register = (Button)findViewById(R.id.btn_register);
         btn_register.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+				btn_register.setText("Registering...");
                 EditText et_endpoint = (EditText)findViewById(R.id.et_endpoint);
                 register(et_endpoint.getText().toString());
             }
@@ -91,7 +92,7 @@ public class SelectECActivity extends Activity {
         JSONObject profile = new JSONObject();
         String clean_mac_addr = DAN.get_clean_mac_addr(Utils.get_mac_addr(SelectECActivity.this));
         try {
-            profile.put("d_name", "Android"+ clean_mac_addr);
+            profile.put("d_name", "Android"+ clean_mac_addr.substring(clean_mac_addr.length() - 4));
             profile.put("dm_name", Constants.dm_name);
             JSONArray feature_list = new JSONArray();
             for (String f: Constants.df_list) {
@@ -137,13 +138,14 @@ public class SelectECActivity extends Activity {
 				break;
 			case REGISTER_FAILED:
                 for (ECListItem ec_list_item: ec_endpoint_list) {
-                    if (ec_list_item.ec_endpoint == odf_object.message) {
+                    if (ec_list_item.ec_endpoint.equals(odf_object.message)) {
                         ec_list_item.status = ECListItem.Status.FAILED;
                     }
                 }
 				runOnUiThread(new Thread () {
     	    		@Override
     	    		public void run () {
+                        ((Button) findViewById(R.id.btn_register)).setText("Register");
     					Toast.makeText(
     							getApplicationContext(),
     							"Register to "+ odf_object.message +" failed.",
