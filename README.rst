@@ -31,10 +31,21 @@ IDFs/ODFs
 ----------
 目前 Smartphone DA 有實作以下 Feature，分別由不同的 Service 或 Class 處理：
 
-* Acceleration: AccelerometerService
-* Microphone, Raw-mic: MicService, AudioTrackManager, Waveshape
-* Speaker: SpeakerService
-* Display: ChartFragment, LineGraph
+* [IDF] Acceleration: AccelerometerService
+
+  - 3 parameters: [float, float, float]，對應到三軸加速度，單位為 ``m/s**2``
+
+* [IDF] Microphone, Raw-mic: MicService, AudioTrackManager, Waveshape
+
+  - 1 parameter: [json]，用來包裝資料，格式為 ``{"data": [int, int, ...]}`` ，每個 ``int`` 的範圍為 0 ~ 255
+  
+* [ODF] Speaker: SpeakerService
+
+  - 1 parameter: [int]，範圍為 0 ~ 20，在 DA 內對應到各個頻率
+  
+* [ODF] Display: ChartFragment, LineGraph
+
+  - 1 parameter: [json]，格式較複雜
 
 
 其他
