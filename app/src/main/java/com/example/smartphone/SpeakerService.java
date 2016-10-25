@@ -7,7 +7,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import DAN.DAN;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
@@ -104,7 +103,7 @@ public class SpeakerService extends Service {
         return Service.START_NOT_STICKY;
     }
 
-    class ODFSubscriber extends DAN.Subscriber {
+    class ODFSubscriber implements DAN.Subscriber {
         public void odf_handler (final String feature, final DAN.ODFObject odf_object) {
             if (!feature.equals("Speaker")) {
                 Utils.logging(local_tag, "ODFSubscriber should only receive Speaker feature");

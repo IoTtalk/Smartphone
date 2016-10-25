@@ -3,7 +3,6 @@ package com.example.smartphone;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import DAN.DAN;
 import android.app.ActionBar;
 import android.app.ActionBar.Tab;
 import android.app.Activity;
@@ -169,7 +168,7 @@ public class FeatureActivity extends Activity {
         finish();
 	}
 	
-	class EventSubscriber extends DAN.Subscriber {
+	class EventSubscriber implements DAN.Subscriber {
 	    public void odf_handler (final String feature, final DAN.ODFObject odf_object) {
 			if (!feature.equals(DAN.CONTROL_CHANNEL)) {
                 Utils.logging(local_tag, "EventSubscriber should only receive {} events", DAN.CONTROL_CHANNEL);
@@ -198,7 +197,7 @@ public class FeatureActivity extends Activity {
 	    }
 	};
 	
-	class ODFSubscriber extends DAN.Subscriber {
+	class ODFSubscriber implements DAN.Subscriber {
 	    public void odf_handler (final String feature, final DAN.ODFObject odf_object) {
             if (feature.equals(DAN.CONTROL_CHANNEL)) {
                 Utils.logging(local_tag, "ODFSubscriber should not receive {} events", DAN.CONTROL_CHANNEL);

@@ -6,7 +6,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import DAN.DAN;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -119,7 +118,7 @@ public class SelectECActivity extends Activity {
     	}
     }
     
-    class EventSubscriber extends DAN.Subscriber {
+    class EventSubscriber implements DAN.Subscriber {
 	    public void odf_handler (final String feature, final DAN.ODFObject odf_object) {
 			if (!feature.equals(DAN.CONTROL_CHANNEL)) {
 				Utils.logging(local_tag, "EventSubscriber should only receive {} events", DAN.CONTROL_CHANNEL);

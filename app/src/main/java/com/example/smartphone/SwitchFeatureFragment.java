@@ -1,6 +1,5 @@
 package com.example.smartphone;
 
-import DAN.DAN;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Intent;

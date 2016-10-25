@@ -12,8 +12,6 @@ import android.os.IBinder;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-import DAN.DAN;
-
     public class AccelerometerService extends Service implements SensorEventListener {
         static final String local_tag = AccelerometerService.class.getSimpleName();
 
