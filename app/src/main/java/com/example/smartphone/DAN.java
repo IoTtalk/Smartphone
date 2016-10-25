@@ -23,7 +23,7 @@ public class DAN {
     // ************************************************ //
     // * Constants or Semi-constants (Seldom changed) * //
     // ************************************************ //
-    static public final String version = "20160510";
+    static public final String version = "20160510-a";
     static public final String CONTROL_CHANNEL = "Control_channel";
     static private String log_tag = "DAN";
     static private final String dan_log_tag = "DAN";
