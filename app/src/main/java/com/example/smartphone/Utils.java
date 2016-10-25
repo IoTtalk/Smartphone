@@ -65,7 +65,7 @@ public class Utils {
     }
     
     static public String get_wifi_ssid (Context context) {
-        final WifiManager wifiManager = (WifiManager) context.getSystemService("wifi");
+        final WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
         final WifiInfo wifiInfo = wifiManager.getConnectionInfo();
     	return wifiInfo.getSSID();
     }
